@@ -1,9 +1,9 @@
 function display_iteration(d::JobShopProblem, j)
     @unpack current_iteration, start_time, solve_time, heurestic_time, current_norm, current_step = d.status
     total_time = time() - d.start_time
-    #maxest = 
-    #est =  
-    #penalty = 
+    maxest = d.status.maxest
+    est = d.status.est 
+    penalty = d.status.penalty
     if upper_bound[current_iteration] < 100000.0
         outstring = ""
         outstring *= @sprintf("Iteration:  %d, (S):  %d  ", current_iteration, i)

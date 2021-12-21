@@ -44,6 +44,7 @@ function sequential_solve(d::JobShopProblem)
     # initialize subproblems & user paramters
     @unpack M, T = d
     d.status.start_time = time()
+    d.status.penalty = d.parameter.start_penalty
     d.status.current_estimate = d.parameter.start_estimate
     d.status.prior_norm = d.status.current_norm = d.parameter.start_norm
     d.status.prior_step = d.status.current_step = d.parameter.start_step
@@ -86,7 +87,7 @@ function sequential_solve(d::JobShopProblem)
 
                 d.stepsize_model = create_problem(StepsizeProblem(), d, lambda, M, sstep)
                 if (d.status.current_M > 5) && (d.status.current_iteration > 50) && (d.status.est > lower_bound(d))
-                    if !valid_solve(StepsizeProblem(), d.stepsize_model) || d.status.current_M >= 50000
+                    if !valid_solve(StepsizeProblem(), d.stepsize_model) || (d.status.current_M >= 50000)
                         d.status.est = d.status.maxest 
                         d.status.current_step /= 10
                         d.status.current_M = 1

@@ -79,6 +79,7 @@ Base.@kwdef mutable struct SolveParameter
     start_estimate = 1400.0
     "start M"
     start_M = 0
+    start_penalty = 120.0
 end
 
 """
@@ -115,6 +116,7 @@ Base.@kwdef mutable struct SolveStatus
     ""
     current_M = 0
     maxest = -100000
+    penalty = 120.0
 end
 
 """
