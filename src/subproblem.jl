@@ -37,6 +37,11 @@ function update_problem!(::Subproblem, jsprob::JobShopProblem, i, λ)
     @objective(jsprob.m[i], Min, sum(o[i] + sum(λ[i,m,t]*(g[i,m,t] + s[m,t] - M[m,t]) for m ∈ M, t ∈ T) for i ∈ I))
     return
 end
+function update_solve!(::Subproblem, jsprob::JobShopProblem, i, λ)
+    update_subproblem!(Subproblem(), d, i, λ)
+    optimize!(d.m[i])
+    return solve_time(d.m[i])
+end
 
 function check_termination(::Subproblem, m)
 end

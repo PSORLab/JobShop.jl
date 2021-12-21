@@ -62,7 +62,9 @@ Base.@kwdef mutable struct SolveParameter
     "Upper bound for dual values used in feasibility problem formulation"
     feasible_lambda_max = 232.0  #TODO: Why is this the maximal value?
     "feasible_labmda_iteration"
-    feasible_labmda_interval::Int = 7
+    feasible_lambda_interval::Int = 7
+    "parameter corresponding to `lamndafeas`" 
+    lambda_feas_param::Int = 25
     "Absolute tolerance criteria for termination"
     absolute_tolerance::Float64 = 1E-3
     "Relative tolerance criteria for termination"
@@ -75,6 +77,8 @@ Base.@kwdef mutable struct SolveParameter
     alpha_step::Float64 = 0.5
     "starting estimate"
     start_estimate = 1400.0
+    "start M"
+    start_M = 0
 end
 
 """
@@ -107,6 +111,8 @@ Base.@kwdef mutable struct SolveStatus
     heurestic_time::Float64 = 0.0
     "Current estimte of xxx"
     current_estimate::Float64 = 0.0
+    ""
+    current_M = 0
 end
 
 """
@@ -138,6 +144,9 @@ Base.@kwdef mutable struct JobShopProblem
     s::Dict{Int, Any}                   = Dict{Int, Any}()
     "Subproblem Storage (if used)"
     m::Dict{Int, Any}               = Dict{Int, Any}()
+    feasibility_model::Any          = nothing
+    ""
+    bpm1::Any                       = nothing
     "Parameters used in solving jobshop problem"
     parameter::SolveParameter       = SolveParameter()
     "Status of jobshop problem solution"

@@ -133,3 +133,9 @@ function update_problem(::FeasibilityProblem, d::JobShopProblem)
     d.bpm1 = @constraint(feasibility_model, bpm1[i ∈ I, j ∈ J[i]], -1 <= b1[i,j] - sb1[i,j] <= 1)
     return nothing
 end
+
+function update_solve!(::FeasibilityProblem, d::JobShopProblem)
+    update_subproblem!(FeasibilityProblem(), d)
+    optimize!(d.feasibility_model)
+    return solve_time(d.feasibility_model)
+end
