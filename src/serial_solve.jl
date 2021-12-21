@@ -24,7 +24,7 @@ end
 
 function save_solution!(::Subproblem, d::JobShopProblem, j)
     d.status.lower_bound[d.status.current_iteration] = objective(d.m[j])
-    d.mult .+= current_step.*value.(d.s[j])
+    d.mult .+= d.status.current_step .* value.(d.s[j])
     d.mult .= max.(d.mult, 0.0)
 
     d.slack_value .= value.(d.s[j])
@@ -39,7 +39,6 @@ function save_solution!(::Subproblem, d::JobShopProblem, j)
     
     return nothing
 end
-
 
 function sequential_solve(d::JobShopProblem)
     # initialize subproblems & user paramters
@@ -57,6 +56,7 @@ function sequential_solve(d::JobShopProblem)
         jsprob.s[i] = s
     end
     create_problem!(FeasibilityProblem(), d)
+
     # begin main solution loop
     while !terminated(d)
   
@@ -79,15 +79,20 @@ function sequential_solve(d::JobShopProblem)
             
             if use_problem(StepsizeProblem(), d)
                 lambda[M] .= mult
+      
+                new_maxest = current_step(d)*current_norm(d)/alpha_step(d) + lower_bound(d)
+                (d.status.maxest < new_maxest)   && (d.status.maxest = new_maxest)
+                (d.status.maxest > d.status.est) && (d.status.maxest = d.status.est)
+
                 d.stepsize_model = create_problem(StepsizeProblem(), d, lambda, M, sstep)
-                if valid_solve(StepsizeProblem(), d.stepsize_model)
-                    if (maxest < step*norm/alpha1 + m2.LB)
-                        maxest = step*norm/alpha1 + m2.LB
+                if (d.status.current_M > 5) && (d.status.current_iteration > 50) && (d.status.est > lower_bound(d))
+                    if !valid_solve(StepsizeProblem(), d.stepsize_model) || d.status.current_M >= 50000
+                        d.status.est = d.status.maxest 
+                        d.status.current_step /= 10
+                        d.status.current_M = 1
+                        d.status.maxest = -100000
                     end
-                    if (maxest > est)
-                        maxest = est
-                    end
-                end
+                end              
             end
             
             d.status.current_norm = d.status.prior_norm

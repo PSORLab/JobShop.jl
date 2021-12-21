@@ -114,6 +114,7 @@ Base.@kwdef mutable struct SolveStatus
     current_estimate::Float64 = 0.0
     ""
     current_M = 0
+    maxest = -100000
 end
 
 """
@@ -162,3 +163,7 @@ function current_rel_gap(d::JobShopProblem)
     U = upper_bound(d)
     return abs(U - L)/(max(abs(L), abs(U))) : Inf
 end
+
+current_step(d::JobShopProblem) = d.status.current_step
+current_norm(d::JobShopProblem) = d.status.current_norm
+alpha_step(d::JobShopProblem) = d.parameter.alpha_step
