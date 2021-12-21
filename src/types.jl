@@ -129,7 +129,9 @@ $(TYPEDFIELDS)
 Base.@kwdef mutable struct JobShopProblem
     "Process time"
     p::Dict{Tuple{Int,Int},Int} = Dict{Tuple{Int,Int},Int}()
-    "List of operations involving for each I"
+    ""
+    I::Dict{Int,Vector{Int}}        = Dict{Int,Vector{Int}}()
+    "List of operations involving for each i in I"
     J::Dict{Int,Vector{Int}}        = Dict{Int,Vector{Int}}()
     "Time Range"
     T::UnitRange{Int}               = 1:1000

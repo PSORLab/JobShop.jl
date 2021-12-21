@@ -40,7 +40,7 @@ function save_solution!(::Subproblem, d::JobShopProblem, j)
     return nothing
 end
 
-function sequential_solve(d::JobShopProblem)
+function sequential_solve!(d::JobShopProblem)
     # initialize subproblems & user paramters
     @unpack M, T = d
     d.status.start_time = time()
