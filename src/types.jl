@@ -155,8 +155,8 @@ end
 
 lower_bound(d::JobShopProblem) = d.status.lower_bound[d.status.current_iteration]
 upper_bound(d::JobShopProblem) = d.status.upper_bound[d.status.current_iteration]
-current_abs_tol(d::JobShopProblem) = upper_bound(d) - lower_bound(d)
-function current_rel_tol(d::JobShopProblem)
+current_abs_gap(d::JobShopProblem) = upper_bound(d) - lower_bound(d)
+function current_rel_gap(d::JobShopProblem)
     L = lower_bound(d)
     U = upper_bound(d)
     return abs(U - L)/(max(abs(L), abs(U))) : Inf

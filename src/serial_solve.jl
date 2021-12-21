@@ -6,8 +6,8 @@ Checks termination of the main algorithm.
 """
 function check_termination!(d::JobShopProblem)
     (d.status.current_iteration >= d.parameter.iteration_limit) && return true
-    (current_abs_tol(d) >= d.parameter.absolute_tolerance)      && return true
-    (current_rel_tol(d) >= d.parameter.relative_tolerance)      && return true
+    (current_abs_gap(d) >= d.parameter.absolute_tolerance)      && return true
+    (current_rel_gap(d) >= d.parameter.relative_tolerance)      && return true
     d.status.current_iteration += 1
     return false
 end

@@ -1,6 +1,6 @@
 module JobShop
 
-using CSV, DataFrames, DocStringExtensions, JuMP, PiecewiseLinearOpt, Requires, UnPack
+using CSV, DataFrames, DocStringExtensions, JuMP, PiecewiseLinearOpt, Printf, Requires, UnPack
 
 export configure!, load_from_csv, solve
 
@@ -12,11 +12,12 @@ function configure!(t::AbstractLagrangianSubproblem, v, js, m)
 end
 configure!(t::AbstractLagrangianSubproblem, js, m) = configure!(t, Val(Symbol(solver_name(m))), js, m)
 
+include(joinpath(@__DIR__, "display.jl"))
 include(joinpath(@__DIR__, "feasibility_problem.jl"))
 include(joinpath(@__DIR__, "subproblem.jl"))
 include(joinpath(@__DIR__, "stepsize_problem.jl"))
 include(joinpath(@__DIR__, "serial_solve.jl"))
-include(joinpath(@__DIR__, "parallel_solve.jl"))
+#include(joinpath(@__DIR__, "parallel_solve.jl"))
 
 function __init__()
     @require CPLEX="a076750e-1247-5638-91d2-ce28b192dca0"      include(joinpath(@__DIR__, "config", "cplex.jl"))
