@@ -119,9 +119,17 @@ $TYPEDSIGNATURES
 Constructs the feasibility problem called after convergence using estimates for 
 starting times `sb1` obtain by Lagrangian relaxation.
 """
-function create_problem(::FeasibilityProblem, jsp::JobShopProblem, sb1)
-    @unpack J, T, R, p, ps, pr, w, d, U, O, I = jsp
-    model, b1, c1, b2, c2, bI1, bI2 = create_problem(OriginalProblem(),jsp)
-    @constraint(model, [i ∈ I, j ∈ J[i]], -1 <= b1[i,j] - sb1[i,j] <= 1)
-    return model
+function create_problem(::FeasibilityProblem, d::JobShopProblem)
+    @unpack J, T, R, p, ps, pr, w, d, U, O, I = d
+    model, b1, c1, b2, c2, bI1, bI2 = create_problem(OriginalProblem(),d)
+    d.bpm1 = @constraint(model, bpm1[i ∈ I, j ∈ J[i]], -1 <= b1[i,j] - 0.0 <= 1)
+    d.feasibility_model = model
+    return nothing
+end
+
+function update_problem(::FeasibilityProblem, d::JobShopProblem)
+    @unpack feasibility_model, sb1, bpm1 = d
+    delete(feasibility_model, bpm1)
+    d.bpm1 = @constraint(feasibility_model, bpm1[i ∈ I, j ∈ J[i]], -1 <= b1[i,j] - sb1[i,j] <= 1)
+    return nothing
 end
