@@ -65,6 +65,10 @@ Base.@kwdef mutable struct SolveParameter
     absolute_tolerance::Float64 = 1E-3
     "Relative tolerance criteria for termination"
     relative_tolerance::Float64 = 1E-3
+    "Starting norm"
+    start_norm::Float64 = 100.0
+    "Starting step"
+    start_step::Float64 = 200.0
 end
 
 """
@@ -83,6 +87,18 @@ Base.@kwdef mutable struct SolveStatus
     lower_bound::Dict{Int,Float64} = Dict{Int,Float64}()
     "Stores upper bound at each iteration"
     upper_bound::Dict{Int,Float64} = Dict{Int,Float64}()
+    "Prior Norm"
+    prior_norm::Float64 = 100.0
+    "Current Norm"
+    current_norm::Float64 = 100.0
+    "Prior Step"
+    prior_step::Float64 = 200.0
+    "Current Step"
+    current_step::Float64 = 200.0
+    "Time spent solving subproblems"
+    solve_time::Float64 = 0.0
+    "Time spent solving model3"
+    heurestic_time::FLoat64 = 0.0
 end
 
 """
