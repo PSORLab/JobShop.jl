@@ -105,6 +105,7 @@ Base.@kwdef mutable struct SolveStatus
     prior_step::Float64 = 200.0
     "Current Step"
     current_step::Float64 = 200.0
+    start_time::Float64 = 0.0
     "Time spent solving subproblems"
     solve_time::Float64 = 0.0
     "Time spent solving model3"

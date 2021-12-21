@@ -139,3 +139,7 @@ function update_solve!(::FeasibilityProblem, d::JobShopProblem)
     optimize!(d.feasibility_model)
     return solve_time(d.feasibility_model)
 end
+
+function use_problem(::FeasibilityProblem, d::JobShopProblem)
+    check_feasible_lambda(d.status.currrent_iteration, d.parameter.feasible_interval)
+end

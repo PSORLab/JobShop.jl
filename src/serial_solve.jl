@@ -4,7 +4,7 @@ $TYPEDSIGNATURES
 
 Checks termination of the main algorithm.
 """
-function check_termination!(d::JobShopProblem)
+function terminated(d::JobShopProblem)
     (d.status.current_iteration >= d.parameter.iteration_limit) && return true
     (current_abs_gap(d) >= d.parameter.absolute_tolerance)      && return true
     (current_rel_gap(d) >= d.parameter.relative_tolerance)      && return true
@@ -23,7 +23,7 @@ function update_norm_step!(d::JobShopProblem, j)
 end
 
 function save_solution!(::Subproblem, d::JobShopProblem, j)
-    d.status.current_lower_bound = objective(d.m[j])
+    d.status.lower_bound[d.status.current_iteration] = objective(d.m[j])
     d.mult .+= current_step.*value.(d.s[j])
     d.mult .= max.(d.mult, 0.0)
 
@@ -42,7 +42,9 @@ end
 
 
 function sequential_solve(d::JobShopProblem)
+    # initialize subproblems & user paramters
     @unpack M, T = d
+    d.status.start_time = time()
     d.status.current_estimate = d.parameter.start_estimate
     d.status.prior_norm = d.status.current_norm = d.parameter.start_norm
     d.status.prior_step = d.status.current_step = d.parameter.start_step
@@ -55,30 +57,45 @@ function sequential_solve(d::JobShopProblem)
         jsprob.s[i] = s
     end
     create_problem!(FeasibilityProblem(), d)
-
-    while !check_termination!(d)
-        j = mod(k, length(d.I)) + 1 
+    # begin main solution loop
+    while !terminated(d)
+  
+        j = mod(d.status.current_iteration , length(d.I)) + 1 
         d.status.solve_time += update_solve!(Subproblem(), d, j, λ)
-        if check_termination(Subproblem(), d.m[j])
+  
+        if valid_solve(Subproblem(), d.m[j])
+            
             save_solution!(Subproblem(), d, j)
             update_norm_step!(d, j)
-            if check_solve_feasible_problem(d)
+
+            if use_problem(FeasibilityProblem(), d)
                 d.status.heurestic_time += update_solve!(FeasibilityProblem(), d)
-                if check_termination(FeasibilityProblem(), d.feasibility_model)
+                if valid_solve(FeasibilityProblem(), d.feasibility_model)
                     d.status.upper_bound[k] = objective_value(d.feasibility_model)
                 end
             end
+
             d.status.current_M += 1
-            if check_feasible_lambda(d)
+            
+            if use_problem(StepsizeProblem(), d)
                 lambda[M] .= mult
                 d.stepsize_model = create_problem(StepsizeProblem(), d, lambda, M, sstep)
-                if check_update_feasible_lambda(d)
+                if valid_solve(StepsizeProblem(), d.stepsize_model)
+                    if (maxest < step*norm/alpha1 + m2.LB)
+                        maxest = step*norm/alpha1 + m2.LB
+                    end
+                    if (maxest > est)
+                        maxest = est
+                    end
                 end
             end
+            
+            d.status.current_norm = d.status.prior_norm
+            d.status.current_step = d.status.prior_step
             d.status.current_iteration += 1
             display_iteration(d)
         end
     end
-    solve_feasibility_problem(d)
+    return
 end
 

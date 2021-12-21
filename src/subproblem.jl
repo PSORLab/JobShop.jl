@@ -22,7 +22,11 @@ function create_problem(::Subproblem, jsprob::JobShopProblem, I::Vector{Int}, λ
     @expression(model, ex_γ[i ∈ I, j ∈ J[i], m ∈ M, t ∈ T], sum(b1[i,j,k]   for i ∈ (t-p[i,j,m,1]):t))
     @expression(model, ex_τ[i ∈ I, j ∈ J[i], m ∈ M, t ∈ T], sum(b2[i,j,k,2] for i ∈ (t-p[i,j,m,1]):t))
     @expression(model, g[i ∈ I, m ∈ M, t ∈ T], sum(γ[i,j]*ex_γ[i,j,m,t] + τ[i,j]*ex_τ[i,j,m,t] for (k,j) in O[m] if k == i))
-    @objective(model, Min, sum(o[i] + sum(λ[i,m,t]*(g[i,m,t] + s[m,t] - M[m]) for m ∈ M, t ∈ T) for i ∈ I))
+    
+    #TODO ADD PENALTY
+    @expression(model, svv_p[i ∈ I], (penalty/100)*sum(sv_p[m,t] + v_p[m,t] for m ∈ M, t ∈ T))
+    
+    @objective(model, Min, sum(o[i] + svv_p[i] + sum(λ[i,m,t]*(g[i,m,t] + s[m,t] - M[m]) for m ∈ M, t ∈ T) for i ∈ I))
     return model, o, g, s
 end
 
@@ -41,7 +45,4 @@ function update_solve!(::Subproblem, jsprob::JobShopProblem, i, λ)
     update_subproblem!(Subproblem(), d, i, λ)
     optimize!(d.m[i])
     return solve_time(d.m[i])
-end
-
-function check_termination(::Subproblem, m)
 end

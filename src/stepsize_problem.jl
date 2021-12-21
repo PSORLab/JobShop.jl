@@ -19,5 +19,8 @@ function create_problem(t::StepsizeProblem, jsp::JobShopProblem)
     end
     return model
 end
-check_feasible_lambda(k, s) = iszero(mod(k, s))
-check_feasible_lambda(d::JobShopProblem) = check_feasible_lambda(d.status.currrent_iteration, d.parameter.feasible_interval)
+function use_problem(::StepsizeProblem, d::JobShopProblem)
+    flag = iszero(mod(d.status.currrent_iteration, d.parameter.feasible_interval))
+    flag &= d.status.currrent_iteration > d.parameter.start_feasible
+    return flag
+end
