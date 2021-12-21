@@ -15,7 +15,8 @@ configure!(t::AbstractLagrangianSubproblem, js, m) = configure!(t, Val(Symbol(so
 include(joinpath(@__DIR__, "feasibility_problem.jl"))
 include(joinpath(@__DIR__, "subproblem.jl"))
 include(joinpath(@__DIR__, "stepsize_problem.jl"))
-include(joinpath(@__DIR__, "solve.jl"))
+include(joinpath(@__DIR__, "serial_solve.jl"))
+include(joinpath(@__DIR__, "parallel_solve.jl"))
 
 function __init__()
     @require CPLEX="a076750e-1247-5638-91d2-ce28b192dca0"      include(joinpath(@__DIR__, "config", "cplex.jl"))
