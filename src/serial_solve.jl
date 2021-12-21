@@ -76,7 +76,7 @@ function sequential_solve(d::JobShopProblem)
                 end
             end
             d.status.current_iteration += 1
-            display_iteration()
+            display_iteration(d)
         end
     end
     solve_feasibility_problem(d)
