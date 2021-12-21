@@ -1,3 +1,5 @@
+using Distributed
+
 const jobs = Channel{Int}(32);
 
 const results = Channel{Tuple}(32);
@@ -30,5 +32,18 @@ end
     global n = n - 1
 end
 
+function subproblem()
+    m = create_subproblem!()
+    optimize!(m)
+    for m ∈ M, t ∈ T
+        d.status.current_norm += max(s[m,t], 0.0)^2
+    end
+    update_search_direction!(d)
+    return check_termination!(d)
+end
+
+function async_solve()
+    pmap(solve_subproblem(), )
+end
 
 

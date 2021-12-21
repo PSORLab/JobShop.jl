@@ -33,6 +33,10 @@ Updates a subproblem corresponding to (m,I) with new dual values.
 """
 function update_problem!(::Subproblem, jsprob::JobShopProblem, i, λ)
     o, g, s, M, I, T, = jsprob.o[i], jsprob.g[i], jsprob.s[i], jsprob.M, jsprob.I[i], jsprob.T
+    # TODO: Update penalty
     @objective(jsprob.m[i], Min, sum(o[i] + sum(λ[i,m,t]*(g[i,m,t] + s[m,t] - M[m,t]) for m ∈ M, t ∈ T) for i ∈ I))
     return
+end
+
+function check_termination(::Subproblem, m)
 end
