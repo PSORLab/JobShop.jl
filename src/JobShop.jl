@@ -27,7 +27,7 @@ end
 include(joinpath(@__DIR__, "feasibility_problem.jl"))
 include(joinpath(@__DIR__, "subproblem.jl"))
 include(joinpath(@__DIR__, "stepsize_problem.jl"))
-include(joinpath(@__DIR__, "serial_solve.jl"))
+include(joinpath(@__DIR__, "sequential_solve.jl"))
 #include(joinpath(@__DIR__, "parallel_solve.jl"))
 
 function __init__()

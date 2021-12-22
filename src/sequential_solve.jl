@@ -49,8 +49,9 @@ function sequential_solve!(d::JobShopProblem)
     d.status.prior_norm = d.status.current_norm = d.parameter.start_norm
     d.status.prior_step = d.status.current_step = d.parameter.start_step
     d.status.current_M = d.parameter.start_M
+    d.λ = zeros(length(M), length(T))
     for i in d.I
-        m, o, g, s = create_problem(Subproblem(), d, i, λ)
+        m, o, g, s = create_problem(Subproblem(), d, i, d.λ)
         jsprob.m[i] = m
         jsprob.o[i] = o
         jsprob.g[i] = g
