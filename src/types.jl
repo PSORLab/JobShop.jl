@@ -145,12 +145,16 @@ Base.@kwdef mutable struct JobShopProblem
     R::UnitRange{Int}               = 0:1
     "Machine capacity"
     M::Vector{Int}                  = Int[]
+    "Machine ids"
+    Mi::UnitRange{Int}              = 1:1
     "Time dart is due"
     d::Vector{Int}                  = Int[]
     "Machines that can run (part,operation) combinations"
     U::Dict{Tuple{Int,Int},Vector{Int}} = Dict{Tuple{Int,Int},Vector{Int}}()
     "Allowable (part operation) combinations per machine"
     O::Dict{Int,Vector{Tuple{Int,Int}}} = Dict{Int,Vector{Tuple{Int,Int}}}()
+    "All allowable"
+    Om::Vector{Tuple{Int,Int}}          = Tuple{Int,Int}[]
     o::Dict{Int, Any}                   = Dict{Int, Any}()
     g::Dict{Int, Any}                   = Dict{Int, Any}()
     s::Dict{Int, Any}                   = Dict{Int, Any}()

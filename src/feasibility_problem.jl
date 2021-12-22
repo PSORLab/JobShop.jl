@@ -54,7 +54,7 @@ $TYPEDSIGNATURES
 Creates the expression used by the objective (via SOS constraint). 
 """
 function original_objective_ex!(m::Model, jsprob::JobShopProblem, c1, c2, I)
-    @unpack J, d, ps, pr, w = jsprob
+    @unpack J, d, ps, pr, w, T = jsprob
 
     # objective
     ps_eq11a = Dict{Tuple{Int,Int},Float64}()
@@ -77,9 +77,14 @@ function original_objective_ex!(m::Model, jsprob::JobShopProblem, c1, c2, I)
         [i ∈ I], α[i,2] - c2[i,J[i][end], J[i][end-1], 0] + d[i] == 0
         [i ∈ I], α[i,3] - c2[i,J[i][end], J[i][end-1], 1] + d[i] == 0
     end)
-    za = [piecewiselinear(m, α[i,1], [-T[end],0,2*T[end]], u -> max(u, 0.0)) for i ∈ I]
-    zb = [piecewiselinear(m, α[i,2], [-T[end],0,2*T[end]], u -> max(u, 0.0)) for i ∈ I]
-    zc = [piecewiselinear(m, α[i,3], [-T[end],0,2*T[end]], u -> max(u, 0.0)) for i ∈ I]
+    za = Dict{Int,Any}()
+    zb = Dict{Int,Any}()
+    zc = Dict{Int,Any}()
+    for i ∈ I
+        za[i] = piecewiselinear(m, α[i,1], [-T[end],0,2*T[end]], u -> max(u, 0.0))
+        zb[i] = piecewiselinear(m, α[i,2], [-T[end],0,2*T[end]], u -> max(u, 0.0))
+        zc[i] = piecewiselinear(m, α[i,3], [-T[end],0,2*T[end]], u -> max(u, 0.0))
+    end
     @expression(m, o[i ∈ I], w[i]*ta[i]*za[i] + w[i]*tb[i]*zb[i] + w[i]*tc[i]*zc[i])
     return o
 end
@@ -90,7 +95,7 @@ $TYPEDSIGNATURES
 Constructs the original (not Lagragian branch and cut) version of the Jobshop problem.
 """
 function create_problem(::OriginalProblem, jsprob::JobShopProblem)
-    @unpack J, T, R, p, ps, pr, w, d, U, O, I = jsp
+    @unpack J, T, R, p, ps, pr, w, d, U, O, I, Mi = jsp
 
     # add constraints shared by multiple problems 
     model, b1, c1, b2, c2, bI1, bI2 = create_problem(SharedProblem(), jsp)
@@ -107,7 +112,7 @@ function create_problem(::OriginalProblem, jsprob::JobShopProblem)
     end
     @expression(model, ex_γ[i ∈ I, j ∈ J[i], m ∈ M, t ∈ T], sum(b1[q,j,k]   for q ∈ (t-p[i,j,m,1]):t))
     @expression(model, ex_τ[i ∈ I, j ∈ J[i], m ∈ M, t ∈ T], sum(b2[q,j,k,2] for q ∈ (t-p[i,j,m,1]):t))
-    @constraint(model, [m ∈ M, t ∈ T], sum(γ[i,j]*ex_γ[i,j,m,t] + τ[i,j]*ex_τ[i,j,m,t] for (i,j) in O[m]) <= M[m])
+    @constraint(model, [m ∈ Mi, t ∈ T], sum(γ[i,j]*ex_γ[i,j,m,t] + τ[i,j]*ex_τ[i,j,m,t] for (i,j) in O[m]) <= M[m])
     
     # add objective
     o = original_objective_ex!(model, jsp, c1, c2, jsp.I)

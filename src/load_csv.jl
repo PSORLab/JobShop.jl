@@ -17,6 +17,7 @@ function load_from_csv(path)
     rework_probability   = read_join(path, "part_operation_rework.csv")
     
     jsprob.M = machine.capacity
+    jsprob.Mi = 1:length(machine.capacity)
     jsprob.d = part_due.due
     for (kj,j) in enumerate(part_operation_num.num)
         jsprob.J[kj] = Int[i for i in 1:j]
@@ -40,6 +41,11 @@ function load_from_csv(path)
     for r in eachrow(rework_probability)
         jsprob.pr[r.part, r.op] = r.rework
     end
-    
+    for m in jsprob.Mi
+        append!(jsprob.Om, jsprob.O[m])
+    end
+    unique!(jsprob.Om)
+    # TODO: use csv to specify weights
+
     return jsprob
 end

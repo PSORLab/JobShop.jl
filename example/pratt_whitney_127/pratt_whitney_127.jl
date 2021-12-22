@@ -19,6 +19,9 @@ end
 for (k,i) in enumerate(117:127)
     jsprob.I[k + 16] = Int[i]
 end
+for i = 1:127
+    jsprob.w[i] = 1
+end
 
 
 sequential_solve!(jsprob)
