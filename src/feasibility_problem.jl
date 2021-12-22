@@ -34,7 +34,7 @@ function create_problem(::SharedProblem, jsp::JobShopProblem, I::Vector{Int})
             jn = J[i][k+1]
             @constraints(m, begin 
                 b1[i,jn] - c1[i,j] >= 1
-                [jᵖ ∈ J[i], r ∈ R], b1[i,jn,jᵖ,r] - c1[i,j,jᵖ,r] >= 1
+                [jᵖ ∈ J[i], r ∈ R], b2[i,jn,jᵖ,r] - c2[i,j,jᵖ,r] >= 1
             end)
         end
     end 
@@ -54,11 +54,14 @@ $TYPEDSIGNATURES
 Creates the expression used by the objective (via SOS constraint). 
 """
 function original_objective_ex!(m::Model, jsprob::JobShopProblem, c1, c2, I)
-    @unpack J, d = jsprob
+    @unpack J, d, ps, pr, w = jsprob
 
     # objective
     ps_eq11a = Dict{Tuple{Int,Int},Float64}()
     t = Dict{Tuple{Int,Int},Float64}()
+    ta = Dict{Int,Float64}()
+    tb = Dict{Int,Float64}()
+    tc = Dict{Int,Float64}()
     for i ∈ I
         jm1 = J[i][1:(end-1)]
         for j ∈ J[i]
@@ -70,13 +73,13 @@ function original_objective_ex!(m::Model, jsprob::JobShopProblem, c1, c2, I)
     end
     @variable(m, α[i ∈ I,1:3])
     @constraints(m, begin 
-        [i ∈ I], α[i,1] - c1[i,J[i]]   + d[i] == 0
-        [i ∈ I], α[i,2] - c2[i,J[i],0] + d[i] == 0
-        [i ∈ I], α[i,3] - c2[i,J[i],1] + d[i] == 0
+        [i ∈ I], α[i,1] - c1[i,J[i][end]]   + d[i] == 0                # TODO: check how to match up c1[i,j,j',r] index to completed value...
+        [i ∈ I], α[i,2] - c2[i,J[i][end], J[i][end-1], 0] + d[i] == 0
+        [i ∈ I], α[i,3] - c2[i,J[i][end], J[i][end-1], 1] + d[i] == 0
     end)
-    za = [piecewiselinear(m, α[i,1], d, fd) for i ∈ I]
-    zb = [piecewiselinear(m, α[i,2], d, fd) for i ∈ I]
-    zc = [piecewiselinear(m, α[i,3], d, fd) for i ∈ I]
+    za = [piecewiselinear(m, α[i,1], [-T[end],0,2*T[end]], u -> max(u, 0.0)) for i ∈ I]
+    zb = [piecewiselinear(m, α[i,2], [-T[end],0,2*T[end]], u -> max(u, 0.0)) for i ∈ I]
+    zc = [piecewiselinear(m, α[i,3], [-T[end],0,2*T[end]], u -> max(u, 0.0)) for i ∈ I]
     @expression(m, o[i ∈ I], w[i]*ta[i]*za[i] + w[i]*tb[i]*zb[i] + w[i]*tc[i]*zc[i])
     return o
 end

@@ -7,7 +7,7 @@ function create_problem(::Subproblem, jsprob::JobShopProblem, I::Vector{Int}, λ
     @unpack J, T, R, p, ps, pr, w, d, U, O, M = jsprob
     model, b1, c1, b2, c2, bI1, bI2 = create_problem(SharedProblem(), jsprob, I)
 
-    o = original_objective_ex!(m, jsprob, c1, c2, I)
+    o = original_objective_ex!(model, jsprob, c1, c2, I)
     @variable(model, s[m ∈ M, t ∈ T] ≥ 0)
     # add machine capacity constraints
     γ = Dict{Tuple{Int,Int},Float64}()
