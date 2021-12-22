@@ -16,8 +16,8 @@ function create_problem(::SharedProblem, jsp::JobShopProblem, I::Vector{Int})
     @variable(m, 0 <= b2[i ∈ I, j ∈ J[i], jᵖ ∈ J[i], r ∈ R] <= T[end], Int)
     @variable(m, 0 <= c2[i ∈ I, j ∈ J[i], jᵖ ∈ J[i], r ∈ R] <= T[end], Int)
 
-    @variable(bI1, [i ∈ I, j ∈ J[i], t ∈ T], Bin)
-    @variable(bI2, [i ∈ I, j ∈ J[i], jᵖ ∈ J, t ∈ T, r ∈ R], Bin)
+    @variable(m, bI1[i ∈ I, j ∈ J[i], t ∈ T], Bin)
+    @variable(m, bI2[i ∈ I, j ∈ J[i], jᵖ ∈ J[i], t ∈ T, r ∈ R], Bin)
 
     @constraints(m, begin 
         eqn2[i ∈ I, j ∈ J[i]], sum((t + p[i,j])*bI1[i,j,t] for t ∈ T, m ∈ U[i,j]) - c1[i,j] == 1 
