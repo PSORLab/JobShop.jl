@@ -127,6 +127,12 @@ Main structure used to hold problem specifications and solutions status.
 $(TYPEDFIELDS)
 """
 Base.@kwdef mutable struct JobShopProblem
+    "Proabability of Scrap"
+    ps::Dict{Tuple{Int,Int},Float64} = Dict{Tuple{Int,Int},Float64}()
+    "Probability of Rework"
+    pr::Dict{Tuple{Int,Int},Float64} = Dict{Tuple{Int,Int},Float64}()
+    "Weights (currrently unused)"
+    w::Dict{Int,Float64} = Dict{Int,Float64}()
     "Process time"
     p::Dict{Tuple{Int,Int},Int} = Dict{Tuple{Int,Int},Int}()
     ""
