@@ -157,6 +157,7 @@ Base.@kwdef mutable struct JobShopProblem
     parameter::SolveParameter       = SolveParameter()
     "Status of jobshop problem solution"
     status::SolveStatus             = SolveStatus()
+    λ                               = nothing
 end
 
 lower_bound(d::JobShopProblem) = d.status.lower_bound[d.status.current_iteration]

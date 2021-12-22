@@ -50,12 +50,12 @@ function sequential_solve!(d::JobShopProblem)
     d.status.prior_step = d.status.current_step = d.parameter.start_step
     d.status.current_M = d.parameter.start_M
     d.λ = zeros(length(M), length(T))
-    for i in d.I
-        m, o, g, s = create_problem(Subproblem(), d, i, d.λ)
-        jsprob.m[i] = m
-        jsprob.o[i] = o
-        jsprob.g[i] = g
-        jsprob.s[i] = s
+    for (ik,i) in enumerate(keys(d.I))
+        m, o, g, s = create_problem(Subproblem(), d, d.I[i], d.λ)
+        jsprob.m[ik] = m
+        jsprob.o[ik] = o
+        jsprob.g[ik] = g
+        jsprob.s[ik] = s
     end
     create_problem!(FeasibilityProblem(), d)
 
@@ -63,7 +63,7 @@ function sequential_solve!(d::JobShopProblem)
     while !terminated(d)
   
         j = mod(d.status.current_iteration , length(d.I)) + 1 
-        d.status.solve_time += update_solve!(Subproblem(), d, j, λ)
+        d.status.solve_time += update_solve!(Subproblem(), d, j, d.λ)
   
         if valid_solve(Subproblem(), d.m[j])
             
