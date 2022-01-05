@@ -149,7 +149,7 @@ Base.@kwdef mutable struct JobShopProblem
     T::UnitRange{Int}               = 1:1000
     Tp::UnitRange{Int}              = 1:220
     "Rework statuses"
-    R::UnitRange{Int}               = 0:1
+    R::UnitRange{Int}               = 1:2
     "Machine capacity"
     M::Vector{Int}                  = Int[]
     "Machine ids"
