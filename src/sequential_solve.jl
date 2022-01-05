@@ -65,7 +65,7 @@ function sequential_solve!(d::JobShopProblem)
     d.λ = zeros(length(Mi), length(Tp))
     d.status.current_iteration = 1
     d.status.lower_bound[0] = -Inf
-    d.status.upper_bound[0] = Inf
+    d.status.upper_bound[0] = d.parameter.start_upper_bound
     d.stard1 = zeros(length(Mi), length(Tp))
     d.stard2 = zeros(length(Mi), length(Tp), 2)
     d.sslackk = zeros(length(Mi), length(Tp))
@@ -84,15 +84,18 @@ function sequential_solve!(d::JobShopProblem)
             save_solution!(Subproblem(), d, m_sp, s_sp, v_p_sp, b1_sp, b2_sp, d.I[j])
             update_norm_step!(d)
 
+            @show use_problem(FeasibilityProblem(), d)
             if use_problem(FeasibilityProblem(), d)
                 m_f = create_solve!(FeasibilityProblem(), d)
                 d.status.heurestic_time += solve_time(m_f)
+                @show valid_solve(FeasibilityProblem(), m_f)
                 if valid_solve(FeasibilityProblem(), m_f)
                     d.status.upper_bound[k] = objective_value(m_f)
                 end
             end
             d.status.current_M += 1
             
+            @show use_problem(StepsizeProblem(), d)
             if use_problem(StepsizeProblem(), d)  # DONE
                 lambda[M] .= mult    
                 new_maxest = current_step(d)*current_norm(d)/alpha_step(d) + lower_bound(d)

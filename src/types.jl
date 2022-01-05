@@ -77,6 +77,8 @@ Base.@kwdef mutable struct SolveParameter
     start_norm::Float64 = 100.0
     "Starting step"
     start_step::Float64 = 0.006
+    "Starting upper bound"
+    start_upper_bound::Float64 = Inf
     "alpha_step"
     alpha_step::Float64 = 0.5
     "starting estimate"
