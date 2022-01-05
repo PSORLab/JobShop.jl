@@ -41,8 +41,8 @@ function create_problem(::SharedProblem, jsp::JobShopProblem, I::Vector{Int})
     end 
     
     @constraints(m, begin
-        eqn_09[i = I, jᵖ = J[i]], b2[i, 1,  jᵖ, 0] - c1[i, jᵖ] >= 1  # DONE
-        eqn_10[i = I, jᵖ = J[i]], b2[i, jᵖ, jᵖ, 1] - c1[i, jᵖ] >= 1  # DONE
+        eqn_09[i = I, jᵖ = J[i]], b2[i, 1,  jᵖ, 1] - c1[i, jᵖ] >= 1  # DONE
+        eqn_10[i = I, jᵖ = J[i]], b2[i, jᵖ, jᵖ, 2] - c1[i, jᵖ] >= 1  # DONE
     end)
 
     return m, b1, c1, b2, c2, bI1, bI2

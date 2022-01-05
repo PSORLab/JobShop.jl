@@ -28,16 +28,19 @@ function update_norm_step!(d::JobShopProblem)
     return nothing
 end
 
-function save_solution!(::Subproblem, d::JobShopProblem, m, s, b1, b2, I)
+function save_solution!(::Subproblem, d::JobShopProblem, m, s, v_p, b1, b2, I)
     @unpack Mi, Tp, J = d
     d.status.lower_bound[d.status.current_iteration] = objective_value(m)
     for m in Mi, t in Tp
-        d.s[m,t] = value.(s[m,t])
+        d.s[m,t] = value(s[m,t])
     end
     d.λ .+= d.status.current_step .* d.s
     d.λ .= max.(d.λ, 0.0)
     for i in I, j in J[i]
         d.sb1[i,j] = value(b1[i,j])
+    end
+    for m in Mi, t in Tp
+        d.sv_p[m,t] = value(v_p[m,t])
     end
     #d.bI2  .= value.(bI2)
     return
@@ -64,19 +67,20 @@ function sequential_solve!(d::JobShopProblem)
     d.status.lower_bound[1] = -Inf
     d.status.upper_bound[1] = Inf
     d.stard1 = zeros(length(Mi), length(Tp))
-    d.stard2 = zeros(length(Mi), length(Tp))
+    d.stard2 = zeros(length(Mi), length(Tp), 2)
     d.sslackk = zeros(length(Mi), length(Tp))
+    d.sv_p = zeros(length(Mi), length(Tp))
 
     # begin main solution loop
     while !terminated(d)
   
         j = mod(d.status.current_iteration, length(d.I)) + 1
-        m_sp, s_sp, b1_sp, b2_sp = create_solve!(Subproblem(), d, d.I[j], d.λ)
+        m_sp, s_sp, v_p_sp, b1_sp, b2_sp = create_solve!(Subproblem(), d, d.I[j], d.λ)
         d.status.solve_time += solve_time(m_sp)
   
         if valid_solve(Subproblem(), m_sp)
             
-            save_solution!(Subproblem(), d, m_sp, s_sp, b1_sp, b2_sp, d.I[j])
+            save_solution!(Subproblem(), d, m_sp, s_sp, v_p_sp, b1_sp, b2_sp, d.I[j])
             update_norm_step!(d)
 
             if use_problem(FeasibilityProblem(), d)
