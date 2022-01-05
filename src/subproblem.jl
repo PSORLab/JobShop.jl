@@ -4,7 +4,7 @@ $TYPEDSIGNATURES
 A subproblem with `i ∈ I`.
 """
 function create_problem(::Subproblem, jsprob::JobShopProblem, I::Vector{Int}, λ)
-    @unpack J, Tp, T, R, p, ps, pr, w, d, U, Om, Mi, M, y, τ, sslackk, stard1, stard2, ta, tb, tc, sv_p = jsprob
+    @unpack J, Tp, T, R, p, ps, pr, w, d, U, Om, Mi, M, y, τ, sslackk, stard1, stard2, ta, tb, tc, sv_p, ShiftLength = jsprob
     @unpack penalty = jsprob.status
     model, b1, c1, b2, c2, bI1, bI2 = create_problem(SharedProblem(), jsprob, I)
 
@@ -21,13 +21,19 @@ function create_problem(::Subproblem, jsprob::JobShopProblem, I::Vector{Int}, λ
     @constraint(model, gp_mt[m = Mi,t = Tp], sum(g[i,m,t] for i=I) - slackk[m,t] + slackk1[m,t] == M[m])
 
 
-    @variable(model, 0 <= ComTime1[i = I] <= T[end])
-    @variable(model, 0 <= ComTime2[i = I, j = J[i], r = R] <= T[end])
+    @variable(model, 0 <= ComTime1[i = I] <= T[end], Int)
+    @variable(model, 0 <= ComTime2[i = I, j = J[i], r = R] <= T[end], Int)
+    @variable(model, 0 <= ys[i = I, j = J[i]] <= T[end], Int)
+
 
     for i = I
         jn = J[i][end]
         @constraint(model, c1[i,jn] - ComTime1[i] == 0)
         @constraint(model, [j = J[i], r = R], ComTime2[i,j,r] - c2[i,jn,j,r] == 0)
+        @constraint(model, [j = J[i]], ys[i,j] >= c1[i,j]/ShiftLength)
+        @constraint(model, [j = J[i]], ys[i,j] <= c1[i,j]/ShiftLength+0.9999)
+        @constraint(model, [j = J[i]], ys[i,j] <= (b2[i,1,j,1]-1)/ShiftLength)
+        @constraint(model, [j = J[i]], ys[i,j] <= (b2[i,j,j,2]-1)/ShiftLength)
     end
 
     @variable(model, 0 <= W1[1:3, i = I] <= 1)
@@ -50,12 +56,14 @@ function create_problem(::Subproblem, jsprob::JobShopProblem, I::Vector{Int}, λ
 
     @expression(model, tard1[i = I], W1[3,i]*2*Tp[end])
     @expression(model, tard2[i = I, j = J[i], r = R], W2[3,i,j,r]*2*Tp[end])
-    @expression(model, total_tard, sum(ta[i]*tard1[i] for i = I) +
-                                   sum(tb[i]*tard2[i,j,1] + tc[i]*tard2[i,j,2] for i = I, j = J[i]) +                                  
-                                   sum(λ[m,t]*slackk[m,t] + penalty*v_p[m,t] for m = Mi, t = Tp) - 
-                                   sum(ta[i]*stard1[i] for i = I) -
-                                   sum(tb[i]*stard2[i,j,1] + tc[i]*stard2[i,j,2] for i = I, j = J[i]) -
-                                   sum(λ[m,t]*sslackk[m,t] + penalty*sv_p[m,t] for m = Mi, t = Tp)
+    @expression(model, total_tard, #sum(ta[i]*tard1[i] for i = I) +
+                                   #sum(tb[i]*tard2[i,j,1] + tc[i]*tard2[i,j,2] for i = I, j = J[i]) +                                  
+                                   #sum(λ[m,t]*slackk[m,t] for m = Mi, t = Tp) -
+                                   sum(penalty*v_p[m,t] for m = Mi, t = Tp) - 
+                                   #sum(ta[i]*stard1[i] for i = I) -
+                                   #sum(tb[i]*stard2[i,j,1] + tc[i]*stard2[i,j,2] for i = I, j = J[i]) -
+                                   #sum(λ[m,t]*sslackk[m,t] for m = Mi, t = Tp) - 
+                                   sum(penalty*sv_p[m,t] for m = Mi, t = Tp)
                 )
 
     @objective(model, Min, total_tard)

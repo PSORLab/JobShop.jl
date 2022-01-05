@@ -181,6 +181,7 @@ Base.@kwdef mutable struct JobShopProblem
     stard2                          = nothing
     sslackk                         = nothing
     sv_p                            = nothing
+    ShiftLength                     = 18
 end
 
 function lower_bound(d::JobShopProblem)
