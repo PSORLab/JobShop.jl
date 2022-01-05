@@ -85,7 +85,7 @@ Base.@kwdef mutable struct SolveParameter
     start_estimate = 1400.0
     "start M"
     start_M = 0
-    start_penalty = 120.0
+    start_penalty = 1.2
     optimizer = nothing
     verbosity::Int = 3
 end
