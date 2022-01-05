@@ -5,8 +5,8 @@ $TYPEDSIGNATURES
 Checks termination of the main algorithm.
 """
 function terminated(d::JobShopProblem)
-    if d.status.current_iteration >= d.parameter.iteration_limit
-        println("Terminated as current_iteration $(d.status.current_iteratio) >= iteration limit $(d.parameter.iteration_limit).")
+    if d.status.current_iteration > d.parameter.iteration_limit
+        println("Terminated as current_iteration $(d.status.current_iteration) > iteration limit $(d.parameter.iteration_limit).")
         return true
     elseif current_abs_gap(d) <= d.parameter.absolute_tolerance
         println("Terminated as absolute gap $(current_abs_gap(d)) <= absolute tolerance $(d.parameter.absolute_tolerance).")
@@ -63,20 +63,21 @@ function sequential_solve!(d::JobShopProblem)
     d.status.prior_step = d.status.current_step = d.parameter.start_step
     d.status.current_M = d.parameter.start_M
     d.λ = zeros(length(Mi), length(Tp))
-    d.status.current_iteration = 0
-    d.status.lower_bound[1] = -Inf
-    d.status.upper_bound[1] = Inf
+    d.status.current_iteration = 1
+    d.status.lower_bound[0] = -Inf
+    d.status.upper_bound[0] = Inf
     d.stard1 = zeros(length(Mi), length(Tp))
     d.stard2 = zeros(length(Mi), length(Tp), 2)
     d.sslackk = zeros(length(Mi), length(Tp))
     d.sv_p = zeros(length(Mi), length(Tp))
+    j = 1
 
     # begin main solution loop
     while !terminated(d)
   
-        j = mod(d.status.current_iteration, length(d.I)) + 1
         m_sp, s_sp, v_p_sp, b1_sp, b2_sp = create_solve!(Subproblem(), d, d.I[j], d.λ)
         d.status.solve_time += solve_time(m_sp)
+        @show valid_solve(Subproblem(), m_sp)
   
         if valid_solve(Subproblem(), m_sp)
             
@@ -113,6 +114,7 @@ function sequential_solve!(d::JobShopProblem)
             @show d.I[j]
             display_iteration(d, j)
             d.status.current_iteration += 1
+            j = mod(d.status.current_iteration, length(d.I)) + 1
         end
     end
     return nothing

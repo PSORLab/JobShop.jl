@@ -76,7 +76,7 @@ Base.@kwdef mutable struct SolveParameter
     "Starting norm"
     start_norm::Float64 = 100.0
     "Starting step"
-    start_step::Float64 = 200.0
+    start_step::Float64 = 0.006
     "alpha_step"
     alpha_step::Float64 = 0.5
     "starting estimate"
@@ -111,7 +111,7 @@ Base.@kwdef mutable struct SolveStatus
     "Prior Step"
     prior_step::Float64 = 200.0
     "Current Step"
-    current_step::Float64 = 200.0
+    current_step::Float64 = 0.006
     start_time::Float64 = 0.0
     "Time spent solving subproblems"
     solve_time::Float64 = 0.0
