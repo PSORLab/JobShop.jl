@@ -1,6 +1,6 @@
 module JobShop
 
-using CSV, DataFrames, DocStringExtensions, JuMP, PiecewiseLinearOpt, Printf, Requires, UnPack
+using CSV, DataFrames, DocStringExtensions, JuMP, Printf, Requires, UnPack
 
 export configure!, load_from_csv, sequential_solve!
 

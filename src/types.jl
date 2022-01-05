@@ -56,13 +56,17 @@ $(TYPEDFIELDS)
 """
 Base.@kwdef mutable struct SolveParameter
     "Total iteration limit"
-    iteration_limit::Int = 60000
+    iteration_limit::Int = 1
     "If using a sequential solution routine, store subproblem  model and incrementally update if `true`"
     store_subproblems::Bool = false
     "Upper bound for dual values used in feasibility problem formulation"
     feasible_lambda_max = 232.0  #TODO: Why is this the maximal value?
-    "feasible_labmda_iteration"
-    feasible_lambda_interval::Int = 7
+    "feasible_labda_iteration"
+    feasible_interval::Int = 7
+    "feasible lambda norm limit"
+    feasible_norm_limit::Float64 = 3.0
+    "feasible lambda"
+    feasible_start::Int = 100
     "parameter corresponding to `lamndafeas`" 
     lambda_feas_param::Int = 25
     "Absolute tolerance criteria for termination"
@@ -80,6 +84,8 @@ Base.@kwdef mutable struct SolveParameter
     "start M"
     start_M = 0
     start_penalty = 120.0
+    optimizer = nothing
+    verbosity::Int = 3
 end
 
 """
@@ -141,6 +147,7 @@ Base.@kwdef mutable struct JobShopProblem
     J::Dict{Int,Vector{Int}}        = Dict{Int,Vector{Int}}()
     "Time Range"
     T::UnitRange{Int}               = 1:1000
+    Tp::UnitRange{Int}              = 1:220
     "Rework statuses"
     R::UnitRange{Int}               = 0:1
     "Machine capacity"
@@ -155,28 +162,43 @@ Base.@kwdef mutable struct JobShopProblem
     O::Dict{Int,Vector{Tuple{Int,Int}}} = Dict{Int,Vector{Tuple{Int,Int}}}()
     "All allowable"
     Om::Vector{Tuple{Int,Int}}          = Tuple{Int,Int}[]
-    o::Dict{Int, Any}                   = Dict{Int, Any}()
-    g::Dict{Int, Any}                   = Dict{Int, Any}()
-    s::Dict{Int, Any}                   = Dict{Int, Any}()
-    "Subproblem Storage (if used)"
-    m::Dict{Int, Any}               = Dict{Int, Any}()
-    feasibility_model::Any          = nothing
-    ""
-    bpm1::Any                       = nothing
     "Parameters used in solving jobshop problem"
     parameter::SolveParameter       = SolveParameter()
     "Status of jobshop problem solution"
     status::SolveStatus             = SolveStatus()
     λ                               = nothing
+    s::Matrix{Float64}              = zeros(2,2)
+    t::Dict{Tuple{Int,Int},Float64} = Dict{Tuple{Int,Int},Float64}()
+    ta::Dict{Int,Float64}           = Dict{Int,Float64}()
+    tb::Dict{Int,Float64}           = Dict{Int,Float64}()
+    tc::Dict{Int,Float64}           = Dict{Int,Float64}()
+    y::Dict{Tuple{Int,Int},Float64} = Dict{Tuple{Int,Int},Float64}()
+    τ::Dict{Tuple{Int,Int},Float64} = Dict{Tuple{Int,Int},Float64}()
+    sb1                             = Dict{Tuple{Int,Int},Float64}()
+    stard1                          = nothing
+    stard2                          = nothing
+    sslackk                         = nothing
 end
 
-lower_bound(d::JobShopProblem) = d.status.lower_bound[d.status.current_iteration]
-upper_bound(d::JobShopProblem) = d.status.upper_bound[d.status.current_iteration]
-current_abs_gap(d::JobShopProblem) = upper_bound(d) - lower_bound(d)
+function lower_bound(d::JobShopProblem)
+    @unpack lower_bound = d.status
+    return lower_bound[maximum(keys(lower_bound))]
+end
+function upper_bound(d::JobShopProblem)
+    @unpack upper_bound = d.status
+    return upper_bound[maximum(keys(upper_bound))]
+end
+function current_abs_gap(d::JobShopProblem)
+    gap = upper_bound(d) - lower_bound(d)
+    return isnan(gap) ? Inf : gap
+end
 function current_rel_gap(d::JobShopProblem)
     L = lower_bound(d)
     U = upper_bound(d)
-    return abs(U - L)/(max(abs(L), abs(U))) : Inf
+    if isnan(U - L) || iszero(max(abs(L), abs(U)))
+        return Inf
+    end
+    return abs(U - L)/(max(abs(L), abs(U)))
 end
 
 current_step(d::JobShopProblem) = d.status.current_step
