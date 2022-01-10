@@ -117,7 +117,7 @@ Base.@kwdef mutable struct SolveStatus
     estimate::Float64 = 0.0
     "current M"
     current_M::Int = 0
-    maxest::Int = -100000
+    maxest::Float64 = -100000
     "Time at which solution algorithm begins"
     time_start::Float64 = 0.0
     "Time spent by optimizer solving subproblems"
