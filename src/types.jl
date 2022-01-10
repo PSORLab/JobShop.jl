@@ -61,6 +61,9 @@ has_nmi(P::PartOpT, Ma::MaPartOp, mi, Ii) = P.i == Ma.i && P.j == Ma.j && Ma.m =
 has_mi(P::PartOpT, Ma::MaPartOp, mi, Ii)  = P.i == Ma.i && P.j == Ma.j && Ma.m == mi && (P.i in Ii)
 
 Base.@kwdef mutable struct SolveParameter
+    prob::Float64           = 0.05
+    prob_r::Float64         = 0.2
+    ShiftLength::Int        = 18
     penalty::Float64 = 120.0
     "alpha_step"
     alpha_step::Float64 = 0.5
@@ -125,9 +128,6 @@ Base.@kwdef mutable struct SolveStatus
 end
 
 Base.@kwdef mutable struct JobShopProblem
-    prob::Float64           = 0.05
-    prob_r::Float64         = 0.2
-    ShiftLength::Int        = 18
     "Time dart is due"
     PartDue::Vector{Int}    = Int[]
     MachineCap::Vector{Int} = Int[]

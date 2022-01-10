@@ -8,9 +8,9 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
 
     feasibility_start = time()
 
-    @unpack I, J, Jop, PartDue, MachineCap, MachineType, 
-            R, T, IJT, MIJ, prob, prob_r, ShiftLength, sbTime1 = jsp
+    @unpack I, J, Jop, PartDue, MachineCap, MachineType, R, T, IJT, MIJ, sbTime1 = jsp
     @unpack upper_bound = jsp.status
+    @unpack prob, prob_r, ShiftLength = jsp.parameter 
 
     m = direct_model(optimizer_with_attributes(jsp.parameter.optimizer))
     configure!(FeasibilityProblem(), jsp, m)

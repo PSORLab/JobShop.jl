@@ -2,10 +2,9 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
 
     subproblem_start = time()
 
-    @unpack I, J, Jop, PartDue, MachineCap, MachineType, 
-            R, T, IJT, MIJ, prob, prob_r, ShiftLength, mult, 
-            sTard1, sTard2, sbI1, sbI2, sslackk, sv_p = jsp
-    @unpack alpha_step = jsp.parameter
+    @unpack I, J, Jop, PartDue, MachineCap, MachineType, R, T, IJT, MIJ, 
+            mult, sTard1, sTard2, sbI1, sbI2, sslackk, sv_p = jsp
+    @unpack prob, prob_r, ShiftLength, alpha_step = jsp.parameter
     @unpack current_norm, current_iteration, current_step, lower_bound, estimate, penalty = jsp.status
 
     m = direct_model(optimizer_with_attributes(jsp.parameter.optimizer))
