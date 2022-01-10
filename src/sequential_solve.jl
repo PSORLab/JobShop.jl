@@ -31,6 +31,23 @@ function sequential_solve!(j::JobShopProblem)
             if use_problem(StepsizeProblem(), j)
                 solve_problem(StepsizeProblem(), j)           
             end
+            if k > 25 
+                if maxest < j.status.current_step*j.status.current_norm/alpha_step_2 + current_lower_bound(j)
+                    maxest = j.status.current_step*j.status.current_norm/alpha_step_2 + current_lower_bound(j)
+                end
+            end
+            if j.status.maxest > j.status.estimate
+                j.status.maxest = j.status.estimate
+            end
+            if (j.status.current_M > 5) && (k > 50) && (j.status.estimate > current_lower_bound(j))
+                if !valid_flag || (j.status.current_M >= 50000)
+                    j.status.estimate = j.status.maxest 
+                    j.status.current_step /= 10
+                    j.status.current_M = 1
+                    j.status.maxest = -100000
+                end
+            end  
+
             j.status.prior_norm = j.status.current_norm
             j.status.prior_step = j.status.current_step
             display_iteration(j, k)

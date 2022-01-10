@@ -32,14 +32,6 @@ function solve_problem(::StepsizeProblem, j::JobShopProblem)
     optimize!(model)
     j.status.time_solve_stepsize += solve_time(model)
     valid_flag = valid_solve(StepsizeProblem(), model) 
-    if (current_M > 5) && (current_iteration(j) > 50) && (j.status.estimate > current_lower_bound(j))
-        if !valid_flag || (j.status.current_M >= 50000)
-            j.status.estimate = j.status.maxest 
-            j.status.current_step /= 10
-            j.status.current_M = 1
-            j.status.maxest = -100000
-        end
-    end  
 
     close_problem!(model)
     j.status.time_total_stepsize = time() - stepsize_start

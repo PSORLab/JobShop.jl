@@ -78,7 +78,7 @@ Base.@kwdef mutable struct SolveParameter
     "Relative tolerance criteria for termination"
     relative_tolerance::Float64 = 1E-3
     "Total iteration limit"
-    iteration_limit::Int = 10000
+    iteration_limit::Int = 80
     "Starting upper bound"
     start_upper_bound::Float64 = Inf
     "feasible_labda_iteration"
@@ -117,7 +117,7 @@ Base.@kwdef mutable struct SolveStatus
     estimate::Float64 = 0.0
     "current M"
     current_M::Int = 0
-    maxest = 0.0
+    maxest::Int = -100000
     "Time at which solution algorithm begins"
     time_start::Float64 = 0.0
     "Time spent by optimizer solving subproblems"
@@ -174,6 +174,7 @@ function initialize!(j::JobShopProblem)
     j.status.current_step = j.parameter.start_step
     j.status.prior_norm = j.parameter.start_norm
     j.status.prior_step = j.parameter.start_step
+    j.status.penalty = j.parameter.penalty
 
     j.status.time_start = time()
     empty!(j.lambd)
