@@ -78,20 +78,20 @@ Base.@kwdef mutable struct SolveParameter
     "Relative tolerance criteria for termination"
     relative_tolerance::Float64 = 1E-3
     "Total iteration limit"
-    iteration_limit::Int = 80
+    iteration_limit::Int = 10000
     "Starting upper bound"
     start_upper_bound::Float64 = Inf
     "feasible_labda_iteration"
     feasible_interval::Int = 7
     "feasible lambda norm limit"
-    feasible_norm_limit::Float64 = 3.0
+    feasible_norm_limit::Float64 = 10.0
     "feasible lambda"
     feasible_start::Int = 100
     stepsize_interval::Int = 25
     stepsize_start::Float64 = 37.5
     "Upper bound for dual values used in feasibility problem formulation"
     stepsize_lambda_max = 232.0
-    verbosity::Int = 1
+    verbosity::Int = 3
     optimizer = nothing
     penalty_increase_iteration::Int = 4000
 end
@@ -104,6 +104,7 @@ Storage to characterize the state of the solution routine.
 $(TYPEDFIELDS)
 """
 Base.@kwdef mutable struct SolveStatus
+    step_update::Bool = false
     penalty::Float64 = 120.0
     current_iteration::Int = 0
     current_norm::Float64 = 100.0
@@ -175,6 +176,7 @@ function initialize!(j::JobShopProblem)
     j.status.prior_norm = j.parameter.start_norm
     j.status.prior_step = j.parameter.start_step
     j.status.penalty = j.parameter.penalty
+    j.status.step_update = false
 
     j.status.time_start = time()
     empty!(j.lambd)

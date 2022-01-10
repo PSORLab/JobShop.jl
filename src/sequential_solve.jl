@@ -22,6 +22,7 @@ function sequential_solve!(j::JobShopProblem)
     initialize!(j)
     k = 1
     while !terminated(j)
+        valid_stepsize = false
         if solve_subproblem(j, j.Ii[k])
             if use_problem(FeasibilityProblem(), j)
                 solve_problem(FeasibilityProblem(), j)
@@ -29,7 +30,7 @@ function sequential_solve!(j::JobShopProblem)
             j.status.current_M += 1
             j.lambd[j.status.current_M] .= j.mult
             if use_problem(StepsizeProblem(), j)
-                solve_problem(StepsizeProblem(), j)           
+                valid_stepsize = solve_problem(StepsizeProblem(), j)           
             end
             if k > 25 
                 if maxest < j.status.current_step*j.status.current_norm/alpha_step_2 + current_lower_bound(j)
@@ -39,12 +40,13 @@ function sequential_solve!(j::JobShopProblem)
             if j.status.maxest > j.status.estimate
                 j.status.maxest = j.status.estimate
             end
-            if (j.status.current_M > 5) && (k > 50) && (j.status.estimate > current_lower_bound(j))
+            if (j.status.current_M > 5) && (k > 50) && (j.status.estimate > current_lower_bound(j)) && !valid_stepsize
                 if !valid_flag || (j.status.current_M >= 50000)
                     j.status.estimate = j.status.maxest 
                     j.status.current_step /= 10
                     j.status.current_M = 1
                     j.status.maxest = -100000
+                    j.status.step_update = true
                 end
             end  
 
