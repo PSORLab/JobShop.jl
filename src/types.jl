@@ -61,12 +61,16 @@ has_nmi(P::PartOpT, Ma::MaPartOp, mi, Ii) = P.i == Ma.i && P.j == Ma.j && Ma.m =
 has_mi(P::PartOpT, Ma::MaPartOp, mi, Ii)  = P.i == Ma.i && P.j == Ma.j && Ma.m == mi && (P.i in Ii)
 
 Base.@kwdef mutable struct SolveParameter
+    start_norm::Float64 = 100.0
+    start_step::Float64 = 200.0
     prob::Float64           = 0.05
     prob_r::Float64         = 0.2
     ShiftLength::Int        = 18
     penalty::Float64 = 120.0
-    "alpha_step"
-    alpha_step::Float64 = 0.5
+    "alpha_step parameter 1"
+    alpha_step_1::Float64 = 0.5/20
+    "alpha_step parameter 2"
+    alpha_step_2::Float64 = 0.5
     "starting estimate"
     estimate = 1400.0
     "Absolute tolerance criteria for termination"
@@ -83,10 +87,13 @@ Base.@kwdef mutable struct SolveParameter
     feasible_norm_limit::Float64 = 3.0
     "feasible lambda"
     feasible_start::Int = 100
+    stepsize_interval::Int = 25
+    stepsize_start::Float64 = 37.5
     "Upper bound for dual values used in feasibility problem formulation"
-    feasible_lambda_max = 232.0  #TODO: Why is this the maximal value?
+    stepsize_lambda_max = 232.0
     verbosity::Int = 1
     optimizer = nothing
+    penalty_increase_iteration::Int = 4000
 end
 
 """
@@ -163,6 +170,11 @@ function initialize!(j::JobShopProblem)
     j.status.lower_bound[0] = -Inf
     j.status.upper_bound[0] = j.parameter.start_upper_bound
     j.status.estimate = j.parameter.estimate
+    j.status.current_norm = j.parameter.start_norm
+    j.status.current_step = j.parameter.start_step
+    j.status.prior_norm = j.parameter.start_norm
+    j.status.prior_step = j.parameter.start_step
+
     j.status.time_start = time()
     empty!(j.lambd)
     for i in 1:6000

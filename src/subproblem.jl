@@ -4,7 +4,7 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
 
     @unpack I, J, Jop, PartDue, MachineCap, MachineType, R, T, IJT, MIJ, 
             mult, sTard1, sTard2, sbI1, sbI2, sslackk, sv_p = jsp
-    @unpack prob, prob_r, ShiftLength, alpha_step = jsp.parameter
+    @unpack prob, prob_r, ShiftLength, alpha_step_1 = jsp.parameter
     @unpack current_norm, current_iteration, current_step, lower_bound, estimate, penalty = jsp.status
 
     m = direct_model(optimizer_with_attributes(jsp.parameter.optimizer))
@@ -164,6 +164,9 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
     @objective(m, Min, TotalTard)
     
     optimize!(m)
+    if mod(current_iteration, jsp.parameter.penalty_increase_iteration) == 0
+        jsp.status.penalty += 1
+    end
 
     jsp.status.time_solve_subprob += solve_time(m)
     valid_flag = valid_solve(Subproblem(), m)
@@ -171,7 +174,7 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
         jsp.status.current_norm = sum(x -> max(value(x), 0.0)^2, slackk)
         jsp.status.lower_bound[current_iteration] = value(LB)
         if (current_iteration > 28) && (estimate < 100000) && (estimate - value(LB) > 0)
-            jsp.status.current_step = alpha_step/10.0*(estimate - value(LB))/jsp.status.current_norm
+            jsp.status.current_step = alpha_step_1/(estimate - value(LB))/jsp.status.current_norm
         end
         for mi in MachineType, t in T
             temp = value(slackk[mi,t])
