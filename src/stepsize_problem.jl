@@ -34,8 +34,7 @@ function solve_problem(::StepsizeProblem, j::JobShopProblem)
         end
     end  
 
-    finalize!(backend(model))
-    GC.gc()
+    close_problem!(model)
     return valid_flag
 end
 

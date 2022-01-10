@@ -12,3 +12,9 @@ function valid_solve(::AbstractLagrangianSubproblem, m)
     end
     return true
 end
+
+function close_problem!(m::Model)
+    finalize!(backend(m))
+    GC.gc()
+    return
+end

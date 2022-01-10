@@ -101,6 +101,8 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
     if valid_flag
         jsp.status.upper_bound[current_iteration] = objective_value(m)
     end
+
+    close_problem!(m)
     return valid_flag
 end
 

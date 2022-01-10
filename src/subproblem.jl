@@ -190,5 +190,7 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
             jsp.sbTime1[i,j]  = value(bTime1[i,j])
         end
     end
+
+    close_problem!(m)
     return valid_flag
 end
