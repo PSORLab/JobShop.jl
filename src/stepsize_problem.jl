@@ -42,6 +42,6 @@ function use_problem(::StepsizeProblem, j::JobShopProblem)
     @unpack stepsize_interval, stepsize_start, verbosity = j.parameter
     flag = iszero(mod(current_iteration(j), stepsize_interval))
     flag &= current_iteration(j) > stepsize_start
-    (verbosity > 1) && (flag ? println("Stepsize problem will be solved.") : println("Stepsize problem skipped."))
+    (verbosity > 1) && (flag && println("Stepsize problem will be solved."))
     return flag
 end

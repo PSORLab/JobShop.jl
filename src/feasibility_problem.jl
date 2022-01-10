@@ -122,6 +122,6 @@ function use_problem(::FeasibilityProblem, d::JobShopProblem)
     flag = current_iteration >= feasible_start
     flag &= iszero(mod(current_iteration, feasible_interval))
     flag &= current_norm < feasible_norm_limit
-    (verbosity > 1) && (flag ? println("Feasibility problem will be solved.") : println("Feasibility problem skipped."))
+    (verbosity > 1) && (flag && println("Feasibility problem will be solved."))
     return flag
 end
