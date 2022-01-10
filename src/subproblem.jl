@@ -166,7 +166,7 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
     
     optimize!(m)
 
-    jsp.status.time_subprob += solve_time(m)
+    jsp.status.time_solve_subprob += solve_time(m)
     valid_flag = valid_solve(Subproblem(), m)
     if valid_flag
         jsp.status.current_norm = sum(x -> max(value(x), 0.0)^2, slackk)

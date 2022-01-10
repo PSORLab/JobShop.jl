@@ -14,7 +14,7 @@ function valid_solve(::AbstractLagrangianSubproblem, m)
 end
 
 function close_problem!(m::Model)
-    finalize!(backend(m))
+    #finalize!(backend(m))
     GC.gc()
     return
 end
