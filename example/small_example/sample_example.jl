@@ -1,9 +1,5 @@
 using Pkg, CPLEX
-#=
-Pkg.add(url="PATH_TO_JOBSHOP_PACKAGE HERE")
-# or
-=#
-#Pkg.rm("JobShop")
+
 Pkg.develop(path="C:\\Users\\wilhe\\Dropbox\\My PC (DESKTOP-P6322LG)\\Desktop\\New Job Shop\\Uploaded Jobshop\\Jobshop.jl")
 
 using JobShop
