@@ -5,6 +5,9 @@ Constructs the feasibility problem called after convergence using
 estimates for  starting times obtain by Lagrangian relaxation.
 """
 function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
+
+    feasibility_start = time()
+
     @unpack I, J, Jop, PartDue, MachineCap, MachineType, 
             R, T, IJT, MIJ, prob, prob_r, ShiftLength, sbTime1 = jsp
     @unpack upper_bound = jsp.status
@@ -96,13 +99,15 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
 
     optimize!(m)
 
-    jsp.status.heurestic_time += solve_time(m)
+    jsp.status.time_solve_feasibility += solve_time(m)
     valid_flag = valid_solve(FeasibilityProblem(), m)
     if valid_flag
         jsp.status.upper_bound[current_iteration] = objective_value(m)
     end
 
     close_problem!(m)
+    jsp.status.time_total_feasibility = time() - feasibility_start
+
     return valid_flag
 end
 

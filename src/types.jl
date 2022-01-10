@@ -106,12 +106,22 @@ Base.@kwdef mutable struct SolveStatus
     upper_bound::Dict{Int,Float64} = Dict{Int,Float64}()
     estimate::Float64 = 0.0
     "current M"
-    current_M = 0
+    current_M::Int = 0
     maxest = 0.0
-    start_time::Float64 = 0.0
-    "Time spent solving subproblems"
-    solve_time::Float64 = 0.0
-    heurestic_time = 0.0
+    "Time at which solution algorithm begins"
+    time_start::Float64 = 0.0
+    "Time spent by optimizer solving subproblems"
+    time_solve_subprob::Float64 = 0.0
+    "Total time spent solving subproblems"
+    time_total_subprob::Float64 = 0.0
+    "Time spent by optimizer solving stepsize problems"
+    time_solve_stepsize::Float64 = 0.0
+    "Total time spent solving stepsize problems"
+    time_total_stepsize::Float64 = 0.0
+    "Time spent by optimizer solving feasibility problems"
+    time_solve_feasibility::Float64 = 0.0
+    "Total time spent solving feasibility problems"
+    time_total_feasibility::Float64 = 0.0
 end
 
 Base.@kwdef mutable struct JobShopProblem
@@ -149,10 +159,11 @@ function initialize!(j::JobShopProblem)
     @unpack MachineType, T = j
     j.mult = zeros(length(MachineType), length(T))
     j.status.current_iteration = 1
+    j.status.current_M = 0
     j.status.lower_bound[0] = -Inf
     j.status.upper_bound[0] = j.parameter.start_upper_bound
     j.status.estimate = j.parameter.estimate
-    j.status.start_time = time()
+    j.status.time_start = time()
     empty!(j.lambd)
     for i in 1:6000
         push!(j.lambd, zeros(length(MachineType),length(T)))

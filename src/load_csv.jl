@@ -74,9 +74,9 @@ function load_from_csv(path::String)
     end
 
     for i in jsp.I, j in jsp.Jop[i], t in jsp.T
-        jsp.sbI1[i,j,t] = 0.0 # 0.0
+        jsp.sbI1[i,j,t] = 0.0
         for j1 in jsp.Jop[i], r in jsp.R
-            jsp.sbI2[i,j,j1,r,t] = 0.0 #1.0 # 0.0
+            jsp.sbI2[i,j,j1,r,t] = 0.0
         end
     end
     

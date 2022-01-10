@@ -4,11 +4,14 @@ $TYPEDSIGNATURES
 Creates subproblem used to determine step-size.
 """
 function solve_problem(::StepsizeProblem, j::JobShopProblem)
+
+    stepsize_start = time()
+
     @unpack lambd, MachineType, T = j
     @unpack current_step, current_norm, current_M = j.status
     @unpack feasible_lambda_max, feasible_interval, alpha_step = j.parameter
     
-    new_maxest = current_step*current_norm/alpha_step + lower_bound(j)
+    new_maxest = current_step*current_norm/alpha_step + current_lower_bound(j)
     (j.status.maxest < new_maxest)        && (j.status.maxest = new_maxest)
     (j.status.maxest > j.status.estimate) && (j.status.maxest = d.status.estimate)
     
@@ -24,8 +27,9 @@ function solve_problem(::StepsizeProblem, j::JobShopProblem)
         end
     end
     optimize!(model)
+    jsp.status.time_solve_stepsize += solve_time(m)
     valid_flag = valid_solve(StepsizeProblem(), model) 
-    if (current_M > 5) && (current_iteration(j) > 50) && (j.status.estimate > lower_bound(j))
+    if (current_M > 5) && (current_iteration(j) > 50) && (j.status.estimate > current_lower_bound(j))
         if !valid_solve(model) || (j.status.current_M >= 50000)
             j.status.estimate = j.status.maxest 
             j.status.current_step /= 10
@@ -35,6 +39,7 @@ function solve_problem(::StepsizeProblem, j::JobShopProblem)
     end  
 
     close_problem!(model)
+    jsp.status.time_total_stepsize = time() - stepsize_start
     return valid_flag
 end
 

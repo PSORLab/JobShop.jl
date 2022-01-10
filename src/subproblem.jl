@@ -1,4 +1,7 @@
 function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
+
+    subproblem_start = time()
+
     @unpack I, J, Jop, PartDue, MachineCap, MachineType, 
             R, T, IJT, MIJ, prob, prob_r, ShiftLength, mult, 
             sTard1, sTard2, sbI1, sbI2, sslackk, sv_p = jsp
@@ -163,7 +166,7 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
     
     optimize!(m)
 
-    jsp.status.solve_time += solve_time(m)
+    jsp.status.time_subprob += solve_time(m)
     valid_flag = valid_solve(Subproblem(), m)
     if valid_flag
         jsp.status.current_norm = sum(x -> max(value(x), 0.0)^2, slackk)
@@ -192,5 +195,6 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
     end
 
     close_problem!(m)
+    jsp.status.time_total_subprob = time() - subproblem_start
     return valid_flag
 end
