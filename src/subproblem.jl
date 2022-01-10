@@ -1,82 +1,194 @@
-"""
-$TYPEDSIGNATURES
+function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
+    @unpack I, J, Jop, PartDue, MachineCap, MachineType, 
+            R, T, IJT, MIJ, prob, prob_r, ShiftLength, mult, 
+            sTard1, sTard2, sbI1, sbI2, sslackk, sv_p = jsp
+    @unpack alpha_step = jsp.parameter
+    @unpack current_norm, current_iteration, current_step, lower_bound, estimate, penalty = jsp.status
 
-A subproblem with `i ∈ I`.
-"""
-function create_problem(::Subproblem, jsprob::JobShopProblem, I::Vector{Int}, λ)
-    @unpack J, Tp, T, R, p, ps, pr, w, d, U, Om, Mi, M, y, τ, sslackk, stard1, stard2, ta, tb, tc, sv_p, ShiftLength = jsprob
-    @unpack penalty = jsprob.status
-    model, b1, c1, b2, c2, bI1, bI2 = create_problem(SharedProblem(), jsprob, I)
+    m = direct_model(optimizer_with_attributes(jsp.parameter.optimizer))
+    configure!(Subproblem(), jsp, m)
+    set_silent(m)
 
-    @variable(model,   0 <=  v_p[m=Mi,t=Tp] <= 16)
-    @variable(model, -16 <= slackk[m=Mi,t=Tp]  <= 16) # slackk
-    @variable(model,   0 <= slackk1[m=Mi,t=Tp] <= 16) # slackk1
+    @variables(m, begin              
+        -16 <= slackk[MachineType, T] <= 16
+        0 <= slackk1[MachineType, T] <= 16
+        0 <= v_p[MachineType, T] <= 16
+        0 <= v_m[MachineType, T] <= 16
+        # variables used for first SOS rearrangement
+        0 <= W11[I] <= 1
+        0 <= W21[I] <= 1
+        0 <= W31[I] <= 1
+        alpha11[I], Bin  
+        alpha21[I], Bin 
+        alpha31[I], Bin
+        # variables used for second SOS rearrangement
+        0 <= W12[i=I, j=Jop[i], R] <= 1
+        0 <= W22[i=I, j=Jop[i], R] <= 1
+        0 <= W32[i=I, j=Jop[i], R] <= 1
+        alpha12[i=I, j=Jop[i], R], Bin
+        alpha22[i=I, j=Jop[i], R], Bin
+        alpha32[i=I, j=Jop[i], R], Bin
 
-    @expression(model, ex_y[i = I, j = J[i], m = Mi, t = Tp], sum(bI1[i,j,k]     for k = (t-p[i,j]):t if t-p[i,j] ∈ Tp))
-    @expression(model, ex_τ[i = I, j = J[i], m = Mi, t = Tp], sum(bI2[i,j,j,1,k] for k = (t-p[i,j]):t if t-p[i,j] ∈ Tp))
-    @expression(model, g[i = I, m = Mi, t = Tp], sum(y[i,j]*ex_y[i,j,m,t] + τ[i,j]*ex_τ[i,j,m,t] for (k,j) ∈ Om if (k == i) && (t-p[i,j] ∈ Tp) && !iszero(y[i,j])))
+        0 <= y[i=Ii, Jop[i]] <= 1000, Int
+        0 <= cTime1[i=Ii, Jop[i]] <= 1000, Int
+        0 <= bTime1[i=Ii, Jop[i]] <= 1000, Int                   
+        0 <= cTime2[i=Ii, Jop[i], Jop[i], R] <= 1000, Int 
+        0 <= bTime2[i=Ii, Jop[i], Jop[i], R] <= 1000, Int
+        0 <= ComTime1[Ii] <= 1000, Int
+        0 <= ComTime2[i=Ii, Jop[i], R] <= 1000, Int
+        bTimeI1[i=Ii, Jop[i], T], Bin
+        bTimeI2[i=Ii, Jop[i], Jop[i], R, T], Bin                    
+     end)
 
-    @constraint(model, slackk - v_p .<= 0)
-    @constraint(model, slackk + v_p .>= 0)
-    @constraint(model, gp_mt[m = Mi,t = Tp], sum(g[i,m,t] for i=I) - slackk[m,t] + slackk1[m,t] == M[m])
+    @expressions(m, begin
+        Tard1[i=I], W31[i]*2*T[end]
+        Tard2[i=I, j=Jop[i], r=R], W32[i,j,r]*2*T[end]
+        LB, sum(Tard1[i]*(1-prob)^J[i] for i in I) +
+            sum(Tard2[i,j,1]*((1-prob)^(j-1) - (1-prob)^j)*(1-prob_r) for i in I, j in Jop[i]) + 
+            sum(Tard2[i,j,2]*((1-prob)^(j-1) - (1-prob)^j)*prob_r for i in I, j in Jop[i]) +
+            sum(mult[mt,t]*slackk[mt, t] for mt in MachineType, t in T) + 
+            sum((penalty/100)*v_p[mt,t] for mt in MachineType, t in T)
+        TotalTard,  sum(Tard1[i]*(1-prob)^J[i] for i in I) + 
+                    sum(Tard2[i,j,1]*((1-prob)^(j-1) - (1-prob)^j)*(1-prob_r) for i in I, j in Jop[i]) + 
+                    sum(Tard2[i,j,2]*((1-prob)^(j-1) - (1-prob)^j)*prob_r for i in I, j in Jop[i]) +
+                    sum(mult[mt,t]*slackk[mt, t] for mt in MachineType, t in T) + 
+                    sum((penalty/100)*v_p[mt,t] for mt in MachineType, t in T) -
+                    (sum(sTard1[i]*(1-prob)^J[i] for i in I) +
+                    sum(sTard2[i,j,1]*((1-prob)^(j-1) - (1-prob)^j)*(1-prob_r) for i in I, j in Jop[i]) + 
+                    sum(sTard2[i,j,2]*((1-prob)^(j-1) - (1-prob)^j)*prob_r for i in I, j in Jop[i]) +
+                    sum(mult[mt,t]*sslackk[mt, t] for mt in MachineType, t in T) + 
+                    sum((penalty/100)*sv_p[mt,t] for mt in MachineType, t in T))
+    end)
 
+    @constraints(m, begin
+        [i in Ii],                               ComTime1[i] - cTime1[i,J[i]] == 0.0
+        [i=Ii, j1=Jop[i], r=R],                  ComTime2[i,j1,r] == cTime2[i,J[i],j1,r]
+        slackk .<= v_p
+        slackk .>= -v_p
+        [i=Ii, j=Jop[i]],                        cTime1[i,j] + 1 <= bTime2[i,1,j,1]
+        [i=Ii, j=Jop[i]],                        cTime1[i,j] + 1 <= bTime2[i,j,j,2]
+        [i=Ii, j=1:(J[i]-1)],                    cTime1[i,j] + 1 <= bTime1[i,j+1]
+        [i=Ii],                                  ComTime1[i]     == W11[i]*(-T[end]) + W31[i]*2*T[end] + PartDue[i]
+        [i=Ii],                                  ComTime1[i]     == cTime1[i,J[i]]
+        [i=Ii, j=Jop[i],  r=R],          ComTime2[i,j,r] - PartDue[i]  == W12[i,j,r]*(-T[end]) + W32[i,j,r]*2*T[end]
+        [i=Ii, j1=Jop[i], r=R, j = 1:(J[i]-1)],  cTime2[i,j,j1,r] <= bTime2[i,j+1,j1,r] - 1
+        [k ∈ setdiff(I,Ii)],                            Tard1[k] == sTard1[k]
+        [k ∈ setdiff(I,Ii), j = Jop[k], r = R], Tard2[k,j,r] == sTard2[k,j,r]
+        [i = Ii, j = Jop[i]], sum(bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) == 1
+        [i = Ii, j = Jop[i]], sum(t*bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) == bTime1[i,j]
+        [i = Ii, j = Jop[i]], sum((t+P.t)*bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) - 1 == cTime1[i,j]
+        W11 .<= alpha11 
+        W21 .<= alpha21
+        W31 .<= alpha31
+        W11 .+ W21 .+ W31 .== 1 
+        alpha11 .+ alpha31 .<= 1 
+        alpha21 .== 1
+        [i=I, j=Jop[i], r=R], W12[i,j,r] <= alpha12[i,j,r]
+        [i=I, j=Jop[i], r=R], W22[i,j,r] <= alpha22[i,j,r]
+        [i=I, j=Jop[i], r=R], W32[i,j,r] <= alpha32[i,j,r]
+        [i=I, j=Jop[i], r=R], W12[i,j,r] + W22[i,j,r] + W32[i,j,r] == 1
+        [i=I, j=Jop[i], r=R], alpha12[i,j,r] + alpha32[i,j,r] <= 1
+        [i=I, j=Jop[i], r=R], alpha22[i,j,r] == 1
+        [i = Ii, j = Jop[i], j1 = Jop[i], r = R], sum(bTimeI2[i,j,j1,r,t] for t in T, P in IJT if has_ij(P,i,j)) == 1
+        [i = Ii, j = Jop[i], j1 = Jop[i], r = R], sum(t*bTimeI2[i,j,j1,r,t] for t in T, P in IJT if has_ij(P,i,j)) == bTime2[i,j,j1,r]
+        [i = Ii, j = Jop[i], j1 = Jop[i], r = R], sum((t+P.t)*bTimeI2[i,j,j1,r,t] for t in T, P in IJT if has_ij(P,i,j)) - 1  == cTime2[i,j,j1,r]
+    end)
 
-    @variable(model, 0 <= ComTime1[i = I] <= T[end], Int)
-    @variable(model, 0 <= ComTime2[i = I, j = J[i], r = R] <= T[end], Int)
-    @variable(model, 0 <= ys[i = I, j = J[i]] <= T[end], Int)
-
-
-    for i = I
-        jn = J[i][end]
-        @constraint(model, c1[i,jn] - ComTime1[i] == 0)
-        @constraint(model, [j = J[i], r = R], ComTime2[i,j,r] - c2[i,jn,j,r] == 0)
-        @constraint(model, [j = J[i]], ys[i,j] >= c1[i,j]/ShiftLength)
-        @constraint(model, [j = J[i]], ys[i,j] <= c1[i,j]/ShiftLength+0.9999)
-        @constraint(model, [j = J[i]], ys[i,j] <= (b2[i,1,j,1]-1)/ShiftLength)
-        @constraint(model, [j = J[i]], ys[i,j] <= (b2[i,j,j,2]-1)/ShiftLength)
+    for i = Ii
+        if J[i] >= 2
+            @constraints(m, begin
+                [j1=Jop[i]], y[i,j1] >= cTime1[i,j1]/ShiftLength
+                [j1=Jop[i]], y[i,j1] <= cTime1[i,j1]/ShiftLength+0.9999
+                [j1=Jop[i]], y[i,j1] <= (bTime2[i,1,j1,1]-1)/ShiftLength
+                [j1=Jop[i]], y[i,j1] <= (bTime2[i,j1,j1,2]-1)/ShiftLength
+            end)
+        end
     end
 
-    @variable(model, 0 <= W1[1:3, i = I] <= 1)
-    @variable(model, α1[1:3, i = I], Bin)
-
-    @constraint(model, W1 .- α1 .<= 0)
-    @constraint(model, [i = I], W1[1,i] + W1[2,i] + W1[3,i] == 1)
-    @constraint(model, [i = I], α1[1,i] + α1[3,i]        <= 1)
-    @constraint(model, [i = I], α1[2,i] == 1)
-    @constraint(model, [i = I], ComTime1[i] - d[i] == W1[1,i]*(-Tp[end]) + W1[3,i]*2*Tp[end])
-
-    @variable(model, 0 <= W2[1:3, i = I, j = J[i], r = R] <= 1)
-    @variable(model, α2[1:3, i = I, j = J[i], r = R])
-
-    @constraint(model, [k = 1:3, i = I, j = J[i], r = R], W2[k,i,j,r] - α2[k,i,j,r]  <= 0)
-    @constraint(model, [i = I, j = J[i], r = R], W2[1,i,j,r] + W2[2,i,j,r] + W2[3,i,j,r] == 1)
-    @constraint(model, [i = I, j = J[i], r = R], α2[1,i,j,r] + α2[3,i,j,r] <= 1) 
-    @constraint(model, [i = I, j = J[i], r = R], α2[2,i,j,r] == 1)
-    @constraint(model, [i = I, j = J[i], r = R], ComTime2[i,j,r] - d[i] == W2[1,i,j,r]*(-Tp[end]) + W2[3,i,j,r]*2*Tp[end])
-
-    @expression(model, tard1[i = I], W1[3,i]*2*Tp[end])
-    @expression(model, tard2[i = I, j = J[i], r = R], W2[3,i,j,r]*2*Tp[end])
-    @expression(model, total_tard, #sum(ta[i]*tard1[i] for i = I) +
-                                   #sum(tb[i]*tard2[i,j,1] + tc[i]*tard2[i,j,2] for i = I, j = J[i]) +                                  
-                                   #sum(λ[m,t]*slackk[m,t] for m = Mi, t = Tp) -
-                                   sum(penalty*v_p[m,t] for m = Mi, t = Tp) - 
-                                   #sum(ta[i]*stard1[i] for i = I) -
-                                   #sum(tb[i]*stard2[i,j,1] + tc[i]*stard2[i,j,2] for i = I, j = J[i]) -
-                                   #sum(λ[m,t]*sslackk[m,t] for m = Mi, t = Tp) - 
-                                   sum(penalty*sv_p[m,t] for m = Mi, t = Tp)
-                )
-
-    @objective(model, Min, total_tard)
-   
-    return model, slackk, v_p, b1, b2
-end
-
-function create_solve!(::Subproblem, d::JobShopProblem, I, λ)
-    m, s, vp, b1, b2 = create_problem(Subproblem(), d, I, λ)
+    # fast unpack for surrogate values
+    outi = fill(true,length(I))
+    for i in Ii
+        outi[i] = false
+    end
+    s1 = zeros(length(MachineType),length(T))
+    for mi in MachineType, t in T
+        t2 = 0.0
+        for Ma in MIJ
+            c = (1-prob)^(Ma.j-1)
+            t1 = 0.0
+            for p in IJT
+                if (p.i == Ma.i) && (p.j == Ma.j) && (Ma.m == mi) && outi[p.i] # replace this !(p.part in Ii)
+                    for k in (t - p.t + 1):t
+                        if t - p.t + 1 >= 1
+                            t1 += sbI1[Ma.i,Ma.j,k]
+                        end
+                    end
+                end
+            end
+            t2 += c*t1
+        end
+        s1[mi,t] = t2
+    end
+    s2 = zeros(length(MachineType),length(T))
+    s3 = zeros(length(MachineType),length(T))
+    for mi in MachineType, t in T
+        t2 = 0.0
+        t3 = 0.0
+        for Ma in jsp.MIJ, p in jsp.IJT, j in Jop[Ma.i]
+            if (p.i == Ma.i) && (p.j == Ma.j) && (Ma.m == mi) && !(p.i in Ii)
+                t2a = 0.0
+                t3a = 0.0
+                for k in (t - p.t+1):t
+                    if t - p.t+1 >= 1
+                        t2a += sbI2[Ma.i,Ma.j,j,1,k]
+                        t3a += sbI2[Ma.i,Ma.j,j,2,k]
+                    end
+                end
+                t2 += ((1-prob)^(j-1)-(1-prob)^(j))*(1-prob_r)*t2a
+                t3 += ((1-prob)^(j-1)-(1-prob)^(j))*prob_r*t3a
+            end
+        end
+        #@show mi, t, indx_c
+        s2[mi,t] = t2
+        s3[mi,t] = t3
+    end
+    @constraint(m, [mi in MachineType, t in T],
+        s1[mi,t] + s2[mi,t] + s3[mi,t] +
+        sum(((1-prob)^(Ma.j-1))*sum(bTimeI1[Ma.i,Ma.j,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for p in IJT, Ma in MIJ if (p.i == Ma.i && p.j == Ma.j && Ma.m == mi && (p.i in Ii))) +
+        sum(((1-prob)^(j-1)-(1-prob)^(j))*(1-prob_r)*sum(bTimeI2[Ma.i,Ma.j,j,1,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for Ma in MIJ, p in IJT, j in Jop[Ma.i] if p.i == Ma.i && p.j == Ma.j && Ma.m == mi && (p.i in Ii)) +
+        sum(((1-prob)^(j-1)-(1-prob)^(j))*prob_r*sum(bTimeI2[Ma.i,Ma.j,j,2,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for Ma in MIJ, p in IJT, j in Jop[Ma.i] if p.i == Ma.i && p.j == Ma.j && Ma.m == mi && (p.i in Ii))
+         - MachineCap[mi] + slackk1[mi,t] == slackk[mi,t])
+    
+    @objective(m, Min, TotalTard)
+    
     optimize!(m)
-    @show termination_status(m)
-    @show objective_value(m)
-    # finalize for CPLEX or EXPRESS
-    GC.gc()
-    return m, s, vp, b1, b2
+
+    jsp.status.solve_time += solve_time(m)
+    valid_flag = valid_solve(Subproblem(), m)
+    if valid_flag
+        jsp.status.current_norm = sum(x -> max(value(x), 0.0)^2, slackk)
+        jsp.status.lower_bound[current_iteration] = value(LB)
+        if (current_iteration > 28) && (estimate < 100000) && (estimate - value(LB) > 0)
+            jsp.status.current_step = alpha_step/10.0*(estimate - value(LB))/jsp.status.current_norm
+        end
+        for mi in MachineType, t in T
+            temp = value(slackk[mi,t])
+            jsp.mult[mi,t] += current_step*temp
+            jsp.sslackk[mi,t] = temp
+            jsp.sv_p[mi,t] = value(v_p[mi,t])
+        end
+        jsp.mult .= max.(jsp.mult, 0.0)
+        for t in T, i in Ii, j in Jop[i]
+            jsp.sbI1[i,j,t] = value(bTimeI1[i,j,t])
+            for j1 in Jop[i], r in R
+                jsp.sbI2[i,j,j1,r,t] = value(bTimeI2[i,j,j1,r,t])
+            end
+        end
+        for i in Ii, j in Jop[i], r in R
+            jsp.sTard1[i]     = value(Tard1[i])
+            jsp.sTard2[i,j,r] = value(Tard2[i,j,r])
+            jsp.sbTime1[i,j]  = value(bTime1[i,j])
+        end
+    end
+    return valid_flag
 end

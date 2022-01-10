@@ -6,24 +6,8 @@ export configure!, load_from_csv, sequential_solve!
 
 include(joinpath(@__DIR__, "types.jl"))
 include(joinpath(@__DIR__, "load_csv.jl"))
-
-function configure!(t::AbstractLagrangianSubproblem, v, js, m)
-    @warn "No Jobshop.configure!(t::$(typeof(t)), js, m::$(typeof(m))) set. Using default solver parameters." 
-end
-configure!(t::AbstractLagrangianSubproblem, js, m) = configure!(t, Val(Symbol(solver_name(m))), js, m)
-
+include(joinpath(@__DIR__, "utilities.jl"))
 include(joinpath(@__DIR__, "display.jl"))
-
-const VALID_TSTATUS = (MOI.OPTIMAL, MOI.LOCALLY_SOLVED, MOI.SOLUTION_LIMIT, MOI.TIME_LIMIT, MOI.NODE_LIMIT, MOI.MEMORY_LIMIT)
-const VALID_PSTATUS = (MOI.FEASIBLE_POINT)
-
-function valid_solve(::AbstractLagrangianSubproblem, m)
-    if !(termination_status(m) ∈ VALID_TSTATUS) || (primal_status(m) != MOI.FEASIBLE_POINT)
-        return false
-    end
-    return true
-end
-
 include(joinpath(@__DIR__, "feasibility_problem.jl"))
 include(joinpath(@__DIR__, "subproblem.jl"))
 include(joinpath(@__DIR__, "stepsize_problem.jl"))

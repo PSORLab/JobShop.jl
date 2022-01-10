@@ -1,4 +1,96 @@
 # Load data from CSV tables into DataFrames
+read_join(p::String,s::String) = CSV.read(joinpath(p,s), DataFrame, header=1)
+
+"""
+$TYPEDSIGNATURES
+
+Load a problem defined by .csv files in the provided path.
+"""
+function load_from_csv(path::String)
+    jsp = JobShopProblem()
+    
+    part_due           = read_join(path, "part_due.csv")
+    machine_part_op    = read_join(path, "machine_part_op.csv")
+    machine            = read_join(path, "machine_capacity.csv")
+    part_operation_num = read_join(path, "part_operation_num.csv")
+    PartOpTs           = read_join(path, "part_operation_time.csv")
+    part_group         = read_join(path, "part_group.csv")   
+
+    MaPartOps = machine_part_op
+    jsp.PartDue    = part_due.due
+    jsp.MachineCap = machine.capacity
+    jsp.MachineType = 1:length(machine.capacity)
+    for r in eachrow(part_group)
+        if !haskey(jsp.Ii, r.group)
+            jsp.Ii[r.group] = Int[]
+        end
+        push!(jsp.Ii[r.group], r.part)
+    end
+    for i in keys(jsp.Ii)
+        append!(jsp.I, jsp.Ii[i])
+    end
+    unique!(jsp.I)
+    
+    for (kj,j) in enumerate(part_operation_num.num)
+        jsp.J[kj] = j
+        jsp.Jop[kj] = 1:j
+    end
+
+    nbPart = length(jsp.I)
+    nbOperation = length(jsp.J)
+    nbMachine = length(jsp.MachineType)
+
+    Pro = zeros(nbPart, nbOperation)
+    APro = zeros(nbPart, nbOperation)
+    BPro = zeros(nbPart, nbOperation)
+    for r in eachrow(PartOpTs)
+        Pro[r.part,r.op] = r.time
+    end
+    for i in jsp.I, j in jsp.J[i]
+        if j <= jsp.J[i] 
+            for l in jsp.J[i]            
+                if l <= j 
+                    APro[i,j] += Pro[i,l]
+                end
+            end
+        end
+    end
+    for i in jsp.I, j in jsp.J[i]
+        if  j <= jsp.J[i]            
+            BPro[i,j] = APro[i,jsp.J[i]] - APro[i,j]
+        end
+    end
+    PartOpsMa = Tuple{Int,Int,Int,Int}[]                                                 
+    for m1 in eachrow(MaPartOps), m2 in eachrow(MaPartOps)
+        if (m1.part == m2.part) && (m1.op == m2.op) && (m1.machine <= m2.machine-1) 
+            push!(PartOpsMa, (m1.part, m1.op, m1.machine, m2.machine))
+        end
+    end
+    for P in eachrow(PartOpTs)
+        push!(jsp.IJT, PartOpT(P.part, P.op, P.time))
+    end
+    for P in eachrow(MaPartOps)
+        push!(jsp.MIJ, MaPartOp(P.machine, P.part, P.op))
+    end
+
+    for i in jsp.I, j in jsp.Jop[i], t in jsp.T
+        jsp.sbI1[i,j,t] = 0.0 # 0.0
+        for j1 in jsp.Jop[i], r in jsp.R
+            jsp.sbI2[i,j,j1,r,t] = 0.0 #1.0 # 0.0
+        end
+    end
+    
+    jsp.sslackk = zeros(Float64,nbMachine,length(jsp.T))
+    jsp.sv_p = zeros(Float64,nbMachine,length(jsp.T))
+    jsp.mult = zeros(Float64,nbMachine,length(jsp.T))
+
+    jsp.sTard1 = zeros(nbPart)
+    jsp.sTard2 = zeros(nbPart, nbOperation, length(jsp.R)) 
+    jsp.sbTime1 = zeros(nbPart,nbOperation)
+    return jsp
+end
+
+#=
 read_join(p,s) = CSV.read(joinpath(p,s), DataFrame, header=1)
 
 """
@@ -82,3 +174,4 @@ function load_from_csv(path)
 
     return jsprob
 end
+=#

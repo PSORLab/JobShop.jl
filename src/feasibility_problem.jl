@@ -1,96 +1,120 @@
-#DONE...
 """
 $TYPEDSIGNATURES
 
-Populates constraints and variables shared by subproblems, original problem, and feasibility problem.
+Constructs the feasibility problem called after convergence using 
+estimates for  starting times obtain by Lagrangian relaxation.
 """
-function create_problem(::SharedProblem, jsp::JobShopProblem, I::Vector{Int})
+function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
+    @unpack I, J, Jop, PartDue, MachineCap, MachineType, 
+            R, T, IJT, MIJ, prob, prob_r, ShiftLength, sbTime1 = jsp
+    @unpack upper_bound = jsp.status
 
-    @unpack J, T, Tp, R, p, ps, pr, w, d, U, O = jsp
-
-    m = Model(jsp.parameter.optimizer)
+    m = direct_model(optimizer_with_attributes(jsp.parameter.optimizer))
+    configure!(FeasibilityProblem(), jsp, m)
     set_silent(m)
-    @variables(m, begin
-        0 <= b1[i=I, j=J[i]] <= T[end], Int                  # DONE
-        0 <= c1[i=I, j=J[i]] <= T[end], Int                  # DONE
-        0 <= b2[i=I, j=J[i], jᵖ=J[i], r=R] <= T[end], Int    # DONE
-        0 <= c2[i=I, j=J[i], jᵖ=J[i], r=R] <= T[end], Int    # DONE
-        bI1[i = I, j = J[i], t = Tp], Bin                    # DONE
-        bI2[i = I, j = J[i], jᵖ = J[i], r = R, t = Tp], Bin  # DONE
+
+    @variables(m, begin          
+        0 <= cTime1[i=I, Jop[i]] <= 1000, Int
+        0 <= cTime2[i=I, Jop[i], Jop[i], R] <= 1000, Int 
+        0 <= bTime1[i=I, Jop[i]] <= 1000, Int                   
+        0 <= bTime2[i=I, Jop[i], Jop[i], R] <= 1000, Int
+        bTimeI1[i=I, Jop[i], T], Bin
+        bTimeI2[i=I, Jop[i], Jop[i], R, T], Bin 
+        0 <= ComTime1[I] <= 1000, Int
+        0 <= ComTime2[i=I,Jop[i],R] <= 1000, Int   
+        0 <= y[i=I, Jop[i]] <= 1000, Int   
+        # variables used for first SOS rearrangement
+        0 <= W11[I] <= 1
+        0 <= W21[I] <= 1
+        0 <= W31[I] <= 1
+        alpha11[I], Bin  
+        alpha21[I], Bin 
+        alpha31[I], Bin
+        # variables used for second SOS rearrangement
+        0 <= W12[i=I, j=Jop[i], R] <= 1
+        0 <= W22[i=I, j=Jop[i], R] <= 1
+        0 <= W32[i=I, j=Jop[i], R] <= 1
+        alpha12[i=I, j=Jop[i], R], Bin
+        alpha22[i=I, j=Jop[i], R], Bin
+        alpha32[i=I, j=Jop[i], R], Bin
+     end)
+
+    @expressions(m, begin
+        Tard1[i=I], W31[i]*2*T[end]
+        Tard2[i=I, j=Jop[i], r=R], W32[i,j,r]*2*T[end]
     end)
 
-    for i ∈ I, j ∈ J[i]
-        if haskey(U, (i,j))
-            @constraints(m, begin 
-                sum((t + p[i,j])*bI1[i,j,t] for t = Tp, m = U[i,j]) - c1[i,j] == 1   # DONE                              # equation 2
-                sum(bI1[i,j,t] for t = Tp, m = U[i,j]) == 1                          # DONE                             # equation 3
-                sum(t*bI1[i,j,t] for t = Tp, m = U[i,j]) - b1[i,j] == 0              # DONE                              # equation 4
-                [jᵖ = J[i], r = R], sum((t + p[i,j])*bI2[i,j,jᵖ,r,t] for t = Tp, m = U[i,j]) - c2[i,j,jᵖ,r] == 1  # DONE # equation 5
-                [ jᵖ = J[i], r = R], sum(bI2[i,j,jᵖ,r,t] for t = Tp, m = U[i,j]) == 1                             # DONE                      # equation 6
-                [jᵖ = J[i], r = R], sum(t*bI2[i,j,jᵖ,r,t] for t = Tp, m = U[i,j]) - b2[i,j,jᵖ,r] == 0   # DONE          # equation 7
-            end)
-        end
-    end
+    @expression(m, TotalTard, 
+        sum(Tard1[i]*(1-prob)^J[i] for i in I) + 
+        sum(Tard2[i,j,1]*((1-prob)^(j-1) - (1-prob)^j)*(1-prob_r) for i in I, j in Jop[i]) + 
+        sum(Tard2[i,j,2]*((1-prob)^(j-1) - (1-prob)^j)*prob_r for i in I, j in Jop[i])
+        )
+    @objective(m, Min, TotalTard)
 
-    for i ∈ I, (k,j) ∈ enumerate(J[i][1:(end-1)])                                                               # equation 8
-        jn = J[i][k+1]
-        @constraints(m, begin 
-            b1[i,jn] - c1[i,j] >= 1
-            [jᵖ = J[i], r = R], b2[i,jn,jᵖ,r] - c2[i,j,jᵖ,r] >= 1
-        end)
-    end 
-    
     @constraints(m, begin
-        eqn_09[i = I, jᵖ = J[i]], b2[i, 1,  jᵖ, 1] - c1[i, jᵖ] >= 1  # DONE
-        eqn_10[i = I, jᵖ = J[i]], b2[i, jᵖ, jᵖ, 2] - c1[i, jᵖ] >= 1  # DONE
+        W11 .<= alpha11 
+        W21 .<= alpha21
+        W31 .<= alpha31
+        W11 .+ W21 .+ W31 .== 1 
+        alpha11 .+ alpha31 .<= 1 
+        alpha21 .== 1
+        [i=I],                  ComTime1[i] - cTime1[i,J[i]] == 0.0
+        [i=I, j1=Jop[i], r=R],  ComTime2[i,j1,r] == cTime2[i,J[i],j1,r]
+        [i=I, j=Jop[i]],        cTime1[i,j] + 1 <= bTime2[i,1,j,1]
+        [i=I, j=Jop[i]],        cTime1[i,j] + 1 <= bTime2[i,j,j,2]
+        [i=I, j=Jop[i], r=R],   W12[i,j,r] <= alpha12[i,j,r]
+        [i=I, j=Jop[i], r=R],   W22[i,j,r] <= alpha22[i,j,r]
+        [i=I, j=Jop[i], r=R],   W32[i,j,r] <= alpha32[i,j,r]
+        [i=I, j=Jop[i], r=R],   W12[i,j,r] + W22[i,j,r] + W32[i,j,r] == 1
+        [i=I, j=Jop[i], r=R],   alpha12[i,j,r] + alpha32[i,j,r] <= 1
+        [i=I, j=Jop[i], r=R],   alpha22[i,j,r] == 1
+        [i=I, j=1:(J[i]-1)],    cTime1[i,j] + 1 <= bTime1[i,j+1]
+        [i=I, j=Jop[i]],        sum(bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) == 1
+        [i=I, j=Jop[i]],        sum(t*bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) == bTime1[i,j]
+        [i=I, j=Jop[i]],        sum((t+P.t)*bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) - 1 == cTime1[i,j]
+        [i=I, j1=Jop[i]; J[i] >= 2],    y[i,j1] >= cTime1[i,j1]/ShiftLength
+        [i=I, j1=Jop[i]; J[i] >= 2],    y[i,j1] <= cTime1[i,j1]/ShiftLength+0.9999
+        [i=I, j1=Jop[i]; J[i] >= 2],    y[i,j1] <= (bTime2[i,1,j1,1]-1)/ShiftLength
+        [i=I, j1=Jop[i]; J[i] >= 2],    y[i,j1] <= (bTime2[i,j1,j1,2]-1)/ShiftLength
+        [i=I, j1=Jop[i], r=R, j = 1:(J[i]-1)],  cTime2[i,j,j1,r] <= bTime2[i,j+1,j1,r] - 1
+        [i=I, j=Jop[i]],    bTime1[i,j] - sbTime1[i,j] <= 1
+        [i=I, j=Jop[i]],    bTime1[i,j] - sbTime1[i,j] >= -1
     end)
 
-    return m, b1, c1, b2, c2, bI1, bI2
-end
-create_problem(::SharedProblem, jsprob::JobShopProblem) = create_problem(SharedProblem(), jsprob, jsprob.I)
+    @constraints(m, begin
+        [i=I, j=Jop[i], j1=Jop[i], r=R], sum(bTimeI2[i,j,j1,r,t] for t in T, P in IJT if has_ij(P,i,j)) == 1
+        [i=I, j=Jop[i], j1=Jop[i], r=R], sum(t*bTimeI2[i,j,j1,r,t] for t in T, P in IJT if has_ij(P,i,j)) == bTime2[i,j,j1,r]
+        [i=I, j=Jop[i], j1=Jop[i], r=R], sum((t+P.t)*bTimeI2[i,j,j1,r,t] for t in T, P in IJT if has_ij(P,i,j)) - 1  == cTime2[i,j,j1,r]
+    end)
 
-"""
-$TYPEDSIGNATURES
+    @constraint(m, [mi in MachineType, t in T],
+        sum(((1-prob)^(Ma.j-1))*sum(bTimeI1[Ma.i,Ma.j,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for p in IJT, Ma in MIJ if (p.i == Ma.i && p.j == Ma.j && Ma.m == mi)) +
+        sum(((1-prob)^(j-1)-(1-prob)^(j))*(1-prob_r)*sum(bTimeI2[Ma.i,Ma.j,j,1,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for Ma in MIJ, p in IJT, j in Jop[Ma.i] if (p.i == Ma.i && p.j == Ma.j && Ma.m == mi)) +
+        sum(((1-prob)^(j-1)-(1-prob)^(j))*prob_r*sum(bTimeI2[Ma.i,Ma.j,j,2,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for Ma in MIJ, p in IJT, j in Jop[Ma.i] if (p.i == Ma.i && p.j == Ma.j && Ma.m == mi))
+        <= MachineCap[mi]
+        )
 
-Constructs the original (not Lagragian branch and cut) version of the Jobshop problem.
-"""
-function create_problem(::OriginalProblem, jsprob::JobShopProblem)
-    @unpack J, Tp, R, p, ps, pr, w, d, U, O, I, Mi, γ, τ = jsp
-
-    # add constraints shared by multiple problems 
-    model, b1, c1, b2, c2, bI1, bI2 = create_problem(SharedProblem(), jsp)
-
-    @expression(model, ex_γ[i = I, j = J[i], m = M, t = Tp], sum(b1[q,j,k]   for q = (t-p[i,j,m,1]):t))
-    @expression(model, ex_τ[i = I, j = J[i], m = M, t = Tp], sum(b2[q,j,k,2] for q = (t-p[i,j,m,1]):t))
-    @constraint(model, [m = Mi, t = Tp], sum(γ[i,j]*ex_γ[i,j,m,t] + τ[i,j]*ex_τ[i,j,m,t] for (i,j) in O[m]) <= M[m])
-    
-    # add objective
-    @objective(model, Min, sum(o[i] for i = I))
-    return model, b1, c1, b2, c2, bI1, bI2
-end
-
-"""
-$TYPEDSIGNATURES
-
-Constructs the feasibility problem called after convergence using estimates for 
-starting times `sb1` obtain by Lagrangian relaxation.
-"""
-function create_solve!(::FeasibilityProblem, d::JobShopProblem)
-    @unpack J, w, d, U, O, I, sb1 = d
-    m, b1, c1, b2, c2, bI1, bI2 = create_problem(OriginalProblem(),d)
-    @constraint(m, [i = I, j = J[i]], -1 <= b1[i,j] - sb1[i,j] <= 1)
     optimize!(m)
-    finalize!(backend(model))
-    GC.gc()
-    return m
+
+    jsp.status.heurestic_time += solve_time(m)
+    valid_flag = valid_solve(FeasibilityProblem(), m)
+    if valid_flag
+        jsp.status.upper_bound[current_iteration] = objective_value(m)
+    end
+    return valid_flag
 end
 
+"""
+$TYPEDSIGNATURES
+
+Checks to see whether the feasibility problem should be solved.
+"""
 function use_problem(::FeasibilityProblem, d::JobShopProblem)
     @unpack current_norm, current_iteration = d.status
     @unpack feasible_norm_limit, feasible_interval, feasible_start, verbosity = d.parameter
     flag = current_iteration >= feasible_start
     flag &= iszero(mod(current_iteration, feasible_interval))
     flag &= current_norm < feasible_norm_limit
-    (flag && verbosity > 1) && println("Stepsize problem will be solved.") : println("Stepsize problem skipped.")
-    flag
+    (verbosity > 1) && (flag ? println("Feasibility problem will be solved.") : println("Feasibility problem skipped."))
+    return flag
 end

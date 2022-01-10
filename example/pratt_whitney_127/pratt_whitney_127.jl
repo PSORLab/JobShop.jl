@@ -9,7 +9,6 @@ Pkg.develop(path="C:\\Users\\wilhe\\Dropbox\\My PC (DESKTOP-P6322LG)\\Desktop\\N
 using JobShop
 
 jsprob = load_from_csv(@__DIR__)
-jsprob.parameter.start_estimate = 1400.0
 jsprob.parameter.start_upper_bound = 8000.0
 jsprob.parameter.optimizer = CPLEX.Optimizer
 
