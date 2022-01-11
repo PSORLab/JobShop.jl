@@ -26,7 +26,7 @@ function solve_problem(::StepsizeProblem, j::JobShopProblem)
         for k = (current_M-2-1000):(current_M-stepsize_interval)
             if k == stepsize_interval*n
                 kn = k + stepsize_interval
-                @constraint(model, [m=MachineType,t=T], c*(λ[m,t] - lambd[k][m,t])^2 >= (λ[m,t] - lambd[kn][m,t])^2)
+                @constraint(model, c*sum((λ[m,t] - lambd[k][m,t])^2 for m=MachineType,t=T) >= sum((λ[m,t] - lambd[kn][m,t])^2 for m=MachineType,t=T))
             end
         end
     end
