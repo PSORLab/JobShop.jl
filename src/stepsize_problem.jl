@@ -13,14 +13,15 @@ function solve_problem(::StepsizeProblem, j::JobShopProblem)
     
     new_maxest = current_step*current_norm/alpha_step_2 + current_lower_bound(j)
     (j.status.maxest < new_maxest)        && (j.status.maxest = new_maxest)
-    (j.status.maxest > j.status.estimate) && (j.status.maxest = d.status.estimate)
+    (j.status.maxest > j.status.estimate) && (j.status.maxest = j.status.estimate)
     
     model = direct_model(optimizer_with_attributes(j.parameter.optimizer))
     configure!(StepsizeProblem(), j, model)
     set_silent(model)
 
     @variable(model, 0 <= λ[MachineType,T] <= stepsize_lambda_max)
-    c = (1 - 4*current_step)^stepsize_interval
+    todo_param = 2
+    c = (1 - 2*todo_param*current_step)^stepsize_interval
     for n = 1:100
         for k = (current_M-2-1000):(current_M-stepsize_interval)
             if k == stepsize_interval*n

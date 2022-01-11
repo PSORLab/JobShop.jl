@@ -61,6 +61,7 @@ has_nmi(P::PartOpT, Ma::MaPartOp, mi, Ii) = P.i == Ma.i && P.j == Ma.j && Ma.m =
 has_mi(P::PartOpT, Ma::MaPartOp, mi, Ii)  = P.i == Ma.i && P.j == Ma.j && Ma.m == mi && (P.i in Ii)
 
 Base.@kwdef mutable struct SolveParameter
+    feasibility_window::Int = 3
     start_norm::Float64 = 100.0
     start_step::Float64 = 200.0
     prob::Float64           = 0.05
@@ -91,7 +92,7 @@ Base.@kwdef mutable struct SolveParameter
     stepsize_start::Float64 = 37.5
     "Upper bound for dual values used in feasibility problem formulation"
     stepsize_lambda_max = 232.0
-    verbosity::Int = 3
+    verbosity::Int = 1
     optimizer = nothing
     penalty_increase_iteration::Int = 4000
 end
