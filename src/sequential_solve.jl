@@ -15,10 +15,11 @@ end
 function sequential_solve!(j::JobShopProblem)
     initialize!(j)
     k = 0
-    while !terminated(j)
+    feasible_problem_found = false
+    while !terminated(j) && !feasible_problem_found
         if solve_subproblem(j, j.Ii[k+1])
             if use_problem(FeasibilityProblem(), j)
-                solve_problem(FeasibilityProblem(), j)
+                feasible_problem_found = solve_problem(FeasibilityProblem(), j)
             end
             j.status.current_M += 1
             j.lambd[j.status.current_M] .= j.mult

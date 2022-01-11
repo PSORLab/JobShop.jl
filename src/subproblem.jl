@@ -276,7 +276,7 @@ sum(((1-prob)^(j-1)-(1-prob)^(j))*prob_r*(sum(bTimeI2[Ma.i,Ma.j,j,2,k] for k=(t-
         jsp.status.lower_bound[current_iteration] = value(LB)
         jsp.status.lower_bound_time[current_iteration] = time() - jsp.status.time_start
         if (estimate < 100000) && (estimate - value(LB) > 0) && step_update
-            jsp.status.current_step = jsp.parameters.alpha_step_1/(estimate - value(LB))/jsp.status.current_norm
+            jsp.status.current_step = jsp.parameter.alpha_step_1/(estimate - value(LB))/jsp.status.current_norm
         end
         for mi in MachineType, t in T
             #temp = round(value(slackk[mi,t]); digits=10)

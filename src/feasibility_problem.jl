@@ -112,15 +112,17 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
         [i=I],                  ComTime1[i]      == cTime1[i,J[i]]
     end)
 
-    optimize!(m)
-    @show termination_status(m)
-    jsp.status.time_solve_feasibility += solve_time(m)
-    valid_flag = valid_solve(FeasibilityProblem(), m)
-    if valid_flag
-        if primal_status(m) == MOI.FEASIBLE_POINT
-            @show objective_value(m)
-            jsp.status.upper_bound_time[jsp.status.current_iteration] = time() - jsp.status.time_start
-            jsp.status.upper_bound[jsp.status.current_iteration] = objective_value(m)
+    valid_flag = false
+    for i=0:2
+        optimize!(m)
+        jsp.status.time_solve_feasibility += solve_time(m)
+        valid_flag = valid_solve(FeasibilityProblem(), m)
+        if valid_flag
+            if primal_status(m) == MOI.FEASIBLE_POINT
+                @show i, objective_value(m)
+                jsp.status.upper_bound_time[jsp.status.current_iteration + i] = time() - jsp.status.time_start
+                jsp.status.upper_bound[jsp.status.current_iteration + i] = objective_value(m)
+            end
         end
     end
 

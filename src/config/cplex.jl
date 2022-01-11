@@ -24,7 +24,7 @@ function configure!(::Subproblem, v::Val{:CPLEX}, j::JobShopProblem, m::Model)
 end
 
 function configure!(::FeasibilityProblem, v::Val{:CPLEX}, j::JobShopProblem, m::Model)
-    set_time_limit_sec(m, 180)
+    set_time_limit_sec(m, 60)
     set_optimizer_attribute(m, "CPX_PARAM_CUTUP", current_upper_bound(j))
     set_optimizer_attribute(m, "CPX_PARAM_RANDOMSEED", CPLEX_SEED)
     set_optimizer_attribute(m, "CPX_PARAM_REPAIRTRIES", 1000000)
