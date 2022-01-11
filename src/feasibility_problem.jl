@@ -97,8 +97,8 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
     )
 
     @constraints(m, begin
-        [i=I, j=Jop[i]], bTime1[i,j] - sbTime1[i,j] <= feasibility_window
-        [i=I, j=Jop[i]], bTime1[i,j] - sbTime1[i,j] >= -feasibility_window
+        [i=I, j=Jop[i]], bTime1[i,j] - sbTime1[i,j] <= feasibility_window + 0.001
+        [i=I, j=Jop[i]], bTime1[i,j] - sbTime1[i,j] >= -feasibility_window - 0.001
 
         [i=I, j=Jop[i]], sum(bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) == 1
         [i=I, j=Jop[i]], sum(t*bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) == bTime1[i,j]
@@ -117,8 +117,11 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
     jsp.status.time_solve_feasibility += solve_time(m)
     valid_flag = valid_solve(FeasibilityProblem(), m)
     if valid_flag
-        @show objective_value(m)
-        jsp.status.upper_bound[jsp.status.current_iteration] = objective_value(m)
+        if primal_status(m) == MOI.FEASIBLE_POINT
+            @show objective_value(m)
+            jsp.status.upper_bound_time[jsp.status.current_iteration] = time() - jsp.status.time_start
+            jsp.status.upper_bound[jsp.status.current_iteration] = objective_value(m)
+        end
     end
 
     close_problem!(m)

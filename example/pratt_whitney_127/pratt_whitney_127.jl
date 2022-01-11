@@ -1,4 +1,4 @@
-using Pkg, CPLEX
+using Pkg, CPLEX, JLD
 #=
 Pkg.add(url="PATH_TO_JOBSHOP_PACKAGE HERE")
 # or
@@ -26,3 +26,4 @@ jsprob.parameter.stepsize_interval = 25
 jsprob.parameter.stepsize_start = 37.5
 
 sequential_solve!(jsprob)
+save(joinpath(@__DIR__, "127part.jld", "jsp", jsprob))

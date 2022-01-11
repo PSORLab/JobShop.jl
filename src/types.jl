@@ -79,7 +79,7 @@ Base.@kwdef mutable struct SolveParameter
     "Relative tolerance criteria for termination"
     relative_tolerance::Float64 = 1E-3
     "Total iteration limit"
-    iteration_limit::Int = 10000
+    iteration_limit::Int = 5000
     "Starting upper bound"
     start_upper_bound::Float64 = Inf
     "feasible_labda_iteration"
@@ -91,7 +91,7 @@ Base.@kwdef mutable struct SolveParameter
     stepsize_interval::Int = 25
     stepsize_start::Float64 = 37.5
     "Upper bound for dual values used in feasibility problem formulation"
-    stepsize_lambda_max = 232.0
+    stepsize_lambda_max = 232
     verbosity::Int = 1
     optimizer = nothing
     penalty_increase_iteration::Int = 4000

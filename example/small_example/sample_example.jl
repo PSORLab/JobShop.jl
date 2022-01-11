@@ -1,4 +1,4 @@
-using Pkg, CPLEX
+using Pkg, CPLEX, JLD
 
 Pkg.develop(path="C:\\Users\\wilhe\\Dropbox\\My PC (DESKTOP-P6322LG)\\Desktop\\New Job Shop\\Uploaded Jobshop\\Jobshop.jl")
 
@@ -20,10 +20,12 @@ jsprob.parameter.penalty = 60.0
 jsprob.parameter.alpha_step_1 = 0.5/20
 jsprob.parameter.alpha_step_2 = 0.5
 jsprob.parameter.feasible_interval = 21
-jsprob.parameter.feasible_norm_limit = 2.0 # TODO: CHANGE BACK TO 2
-jsprob.parameter.feasibility_window = 3
+jsprob.parameter.feasible_norm_limit = 2 # TODO: CHANGE BACK TO 2
+jsprob.parameter.feasibility_window = 2
 jsprob.parameter.stepsize_interval = 40
 jsprob.parameter.stepsize_start = 37.5
+jsprob.parameter.iteration_limit = 1000
 
 # solve
 sequential_solve!(jsprob)
+#save(joinpath(@__DIR__, "simple_example.jld", "jsp", jsprob))
