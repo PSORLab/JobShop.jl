@@ -62,42 +62,35 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
                     sum((penalty/100)*sv_p[mt,t] for mt in MachineType, t in T))
     end)
 
+    @objective(m, Min, TotalTard)
+
     @constraints(m, begin
-        [i=Ii, j1=Jop[i], r=R],                  ComTime2[i,j1,r] == cTime2[i,J[i],j1,r]
-        slackk .<= v_p
-        slackk .>= -v_p
-        [i=Ii, j=Jop[i]],                        cTime1[i,j] + 1 <= bTime2[i,1,j,1]
-        [i=Ii, j=Jop[i]],                        cTime1[i,j] + 1 <= bTime2[i,j,j,2]
-        [i=Ii, j=1:(J[i]-1)],                    cTime1[i,j] + 1 <= bTime1[i,j+1]
-        [i=Ii],                                  ComTime1[i]     == W11[i]*(-T[end]) + W31[i]*2*T[end] + PartDue[i]
-        [i=Ii],                                  ComTime1[i]     == cTime1[i,J[i]]
-        [i=Ii, j=Jop[i],  r=R],          ComTime2[i,j,r] - PartDue[i]  == W12[i,j,r]*(-T[end]) + W32[i,j,r]*2*T[end]
-        [i=Ii, j1=Jop[i], r=R, j = 1:(J[i]-1)],  cTime2[i,j,j1,r] <= bTime2[i,j+1,j1,r] - 1
-        [k ∈ setdiff(I,Ii)],                            Tard1[k] == sTard1[k]
-        [k ∈ setdiff(I,Ii), j = Jop[k], r = R], Tard2[k,j,r] == sTard2[k,j,r]
-        [i = Ii, j = Jop[i]], sum(bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) == 1
-        [i = Ii, j = Jop[i]], sum(t*bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) == bTime1[i,j]
-        [i = Ii, j = Jop[i]], sum((t+P.t)*bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) - 1 == cTime1[i,j]
+        [i=Ii, j=Jop[i]],   cTime1[i,j] + 1 <= bTime2[i,1,j,1]
+        [i=Ii, j=Jop[i]],   cTime1[i,j] + 1 <= bTime2[i,j,j,2]
+
         W11 .<= alpha11 
         W21 .<= alpha21
         W31 .<= alpha31
         W11 .+ W21 .+ W31 .== 1 
         alpha11 .+ alpha31 .<= 1 
         alpha21 .== 1
-        [i=I, j=Jop[i], r=R], W12[i,j,r] <= alpha12[i,j,r]
-        [i=I, j=Jop[i], r=R], W22[i,j,r] <= alpha22[i,j,r]
-        [i=I, j=Jop[i], r=R], W32[i,j,r] <= alpha32[i,j,r]
-        [i=I, j=Jop[i], r=R], W12[i,j,r] + W22[i,j,r] + W32[i,j,r] == 1
-        [i=I, j=Jop[i], r=R], alpha12[i,j,r] + alpha32[i,j,r] <= 1
-        [i=I, j=Jop[i], r=R], alpha22[i,j,r] == 1
-        [i = Ii, j = Jop[i], j1 = Jop[i], r = R], sum(bTimeI2[i,j,j1,r,t] for t in T, P in IJT if has_ij(P,i,j)) == 1
-        [i = Ii, j = Jop[i], j1 = Jop[i], r = R], sum(t*bTimeI2[i,j,j1,r,t] for t in T, P in IJT if has_ij(P,i,j)) == bTime2[i,j,j1,r]
-        [i = Ii, j = Jop[i], j1 = Jop[i], r = R], sum((t+P.t)*bTimeI2[i,j,j1,r,t] for t in T, P in IJT if has_ij(P,i,j)) - 1  == cTime2[i,j,j1,r]
+        [i=Ii],   ComTime1[i] - PartDue[i] == W11[i]*(-T[end]) + W31[i]*2*T[end]
+
+        [i=Ii, j=Jop[i], r=R],  W12[i,j,r] <= alpha12[i,j,r]
+        [i=Ii, j=Jop[i], r=R],  W22[i,j,r] <= alpha22[i,j,r]
+        [i=Ii, j=Jop[i], r=R],  W32[i,j,r] <= alpha32[i,j,r]
+        [i=Ii, j=Jop[i], r=R],  W12[i,j,r] + W22[i,j,r] + W32[i,j,r] == 1
+        [i=Ii, j=Jop[i], r=R],  alpha12[i,j,r] + alpha32[i,j,r] <= 1
+        [i=Ii, j=Jop[i], r=R],  alpha22[i,j,r] == 1
+        [i=Ii, j=Jop[i], r=R],  ComTime2[i,j,r] - PartDue[i] == W12[i,j,r]*(-T[end]) + W32[i,j,r]*2*T[end]
     end)
 
     for i = Ii
         if J[i] >= 2
             @constraints(m, begin
+                [j=1:(J[i]-1)],                       cTime1[i,j] + 1 <= bTime1[i,j+1]
+                [j1=Jop[i], r=R, j=1:(J[i]-1)],  cTime2[i,j,j1,r] + 1 <= bTime2[i,j+1,j1,r]
+
                 [j1=Jop[i]], y[i,j1] >= cTime1[i,j1]/ShiftLength
                 [j1=Jop[i]], y[i,j1] <= cTime1[i,j1]/ShiftLength+0.9999
                 [j1=Jop[i]], y[i,j1] <= (bTime2[i,1,j1,1]-1)/ShiftLength
@@ -105,6 +98,14 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
             end)
         end
     end
+
+    @constraints(m, begin
+        [k=setdiff(I,Ii)],                    Tard1[k] == sTard1[k]
+        [k=setdiff(I,Ii), j=Jop[k], r=R], Tard2[k,j,r] == sTard2[k,j,r]
+
+        slackk .<= v_p
+        slackk .>= -v_p
+    end)
 
     # fast unpack for surrogate values
     outi = fill(true,length(I))
@@ -118,7 +119,7 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
             c = (1-prob)^(Ma.j-1)
             t1 = 0.0
             for p in IJT
-                if (p.i == Ma.i) && (p.j == Ma.j) && (Ma.m == mi) && outi[p.i] # replace this !(p.part in Ii)
+                if (p.i == Ma.i) && (p.j == Ma.j) && (Ma.m == mi) && !(p.i in Ii) #&& outi[p.i] # replace this !(p.part in Ii)
                     for k in (t - p.t + 1):t
                         if t - p.t + 1 >= 1
                             t1 += sbI1[Ma.i,Ma.j,k]
@@ -160,7 +161,18 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
         sum(((1-prob)^(j-1)-(1-prob)^(j))*prob_r*sum(bTimeI2[Ma.i,Ma.j,j,2,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for Ma in MIJ, p in IJT, j in Jop[Ma.i] if p.i == Ma.i && p.j == Ma.j && Ma.m == mi && (p.i in Ii))
          - MachineCap[mi] + slackk1[mi,t] == slackk[mi,t])
     
-    @objective(m, Min, TotalTard)
+    @constraints(m, begin
+        [i=Ii, j=Jop[i]], sum(bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) == 1
+        [i=Ii, j=Jop[i]], sum(t*bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) == bTime1[i,j]
+        [i=Ii, j=Jop[i]], sum((t+P.t)*bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) - 1 == cTime1[i,j]
+
+        [i=Ii, j=Jop[i], j1=Jop[i], r=R], sum(bTimeI2[i,j,j1,r,t] for t in T, P in IJT if has_ij(P,i,j)) == 1
+        [i=Ii, j=Jop[i], j1=Jop[i], r=R], sum(t*bTimeI2[i,j,j1,r,t] for t in T, P in IJT if has_ij(P,i,j)) == bTime2[i,j,j1,r]
+        [i=Ii, j=Jop[i], j1=Jop[i], r=R], sum((t+P.t)*bTimeI2[i,j,j1,r,t] for t in T, P in IJT if has_ij(P,i,j)) - 1  == cTime2[i,j,j1,r]
+
+        [i=Ii],                 ComTime1[i]      == cTime1[i,J[i]]
+        [i=Ii, j1=Jop[i], r=R], ComTime2[i,j1,r] == cTime2[i,J[i],j1,r]
+    end)
     
     optimize!(m)
     if mod(current_iteration, jsp.parameter.penalty_increase_iteration) == 0
@@ -170,7 +182,8 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
     jsp.status.time_solve_subprob += solve_time(m)
     valid_flag = valid_solve(Subproblem(), m)
     if valid_flag
-        jsp.status.current_norm = sum(x -> max(value(x), 0.0)^2, slackk)
+        jsp.status.current_norm = sum(x -> max(value(x), 0.0)*max(value(x), 0.0), slackk)
+        @show value(LB)
         jsp.status.lower_bound[current_iteration] = value(LB)
         if (current_iteration > 28) && (estimate < 100000) && (estimate - value(LB) > 0) && step_update
             jsp.status.current_step = alpha_step_1/(estimate - value(LB))/jsp.status.current_norm
@@ -193,6 +206,17 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
             jsp.sTard2[i,j,r] = value(Tard2[i,j,r])
             jsp.sbTime1[i,j]  = value(bTime1[i,j])
         end
+        @show maximum(jsp.mult)
+        @show maximum(jsp.sslackk)
+        @show maximum(jsp.sv_p)
+        f1 = x -> jsp.sbI1[x]
+        @show maximum(f1, keys(jsp.sbI1))
+        f2 = x -> jsp.sbI2[x]
+        @show maximum(f2, keys(jsp.sbI2))
+        @show maximum(jsp.sTard1)
+        f3 = x -> jsp.sTard2[x]
+        @show maximum(f3, keys(jsp.sTard2))
+        @show maximum(jsp.sbTime1)
     end
 
     close_problem!(m)

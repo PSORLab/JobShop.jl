@@ -81,7 +81,7 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
         [i=I, j=Jop[i], r=R],   ComTime2[i,j,r] - PartDue[i] == W12[i,j,r]*(-T[end]) + W32[i,j,r]*2*T[end]
 
         [i=I, j=1:(J[i]-1)],                    cTime1[i,j] + 1  <= bTime1[i,j+1]
-        [i=I, j1=Jop[i], r=R, j = 1:(J[i]-1)],  cTime2[i,j,j1,r] <= bTime2[i,j+1,j1,r] - 1  # TODO: maybe...
+        [i=I, j1=Jop[i], r=R, j = 1:(J[i]-1); J[i] >= 2],  cTime2[i,j,j1,r] + 1 <= bTime2[i,j+1,j1,r]
 
         [i=I, j1=Jop[i]; J[i] >= 2],    y[i,j1] >= cTime1[i,j1]/ShiftLength
         [i=I, j1=Jop[i]; J[i] >= 2],    y[i,j1] <= cTime1[i,j1]/ShiftLength+0.9999
