@@ -10,11 +10,7 @@ function solve_problem(::StepsizeProblem, j::JobShopProblem)
     @unpack lambd, MachineType, T = j
     @unpack current_step, current_norm, current_M = j.status
     @unpack stepsize_lambda_max, stepsize_interval, alpha_step_2 = j.parameter
-    
-    new_maxest = current_step*current_norm/alpha_step_2 + current_lower_bound(j)
-    (j.status.maxest < new_maxest)        && (j.status.maxest = new_maxest)
-    (j.status.maxest > j.status.estimate) && (j.status.maxest = j.status.estimate)
-    
+       
     model = direct_model(optimizer_with_attributes(j.parameter.optimizer))
     configure!(StepsizeProblem(), j, model)
     set_silent(model)
@@ -31,8 +27,27 @@ function solve_problem(::StepsizeProblem, j::JobShopProblem)
         end
     end
     optimize!(model)
+    @show "Stepsize problem", termination_status(model)
     j.status.time_solve_stepsize += solve_time(model)
     valid_flag = valid_solve(StepsizeProblem(), model) 
+
+    if j.status.current_iteration > 25 
+        if j.status.maxest < j.status.current_step*j.status.current_norm/j.parameter.alpha_step_2 + current_lower_bound(j)
+            j.status.maxest = j.status.current_step*j.status.current_norm/j.parameter.alpha_step_2 + current_lower_bound(j)
+        end
+    end
+    if j.status.maxest > j.status.estimate
+        j.status.maxest = j.status.estimate
+    end
+    if (j.status.current_M > 5) && (j.status.current_iteration > 50) && (j.status.estimate > current_lower_bound(j))
+        if !valid_flag || (j.status.current_M >= 50000)
+            j.status.estimate = j.status.maxest 
+            j.status.current_step /= 10
+            j.status.current_M = 1
+            j.status.maxest = -100000
+            j.status.step_update = true
+        end
+    end  
 
     close_problem!(model)
     j.status.time_total_stepsize = time() - stepsize_start
