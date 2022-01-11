@@ -116,6 +116,8 @@ Base.@kwdef mutable struct SolveStatus
     lower_bound::Dict{Int,Float64} = Dict{Int,Float64}()
     "Stores upper bound at each iteration"
     upper_bound::Dict{Int,Float64} = Dict{Int,Float64}()
+    lower_bound_time::Dict{Int,Float64} = Dict{Int,Float64}()
+    upper_bound_time::Dict{Int,Float64} = Dict{Int,Float64}()
     estimate::Float64 = 0.0
     "current M"
     current_M::Int = 0
