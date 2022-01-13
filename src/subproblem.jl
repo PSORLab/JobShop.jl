@@ -266,38 +266,25 @@ sum(((1-prob)^(j-1)-(1-prob)^(j))*prob_r*(sum(bTimeI2[Ma.i,Ma.j,j,2,k] for k=(t-
     valid_flag = valid_solve(Subproblem(), m)
     if valid_flag
         jsp.status.current_norm = 0.0
-        #max_slack = 0.0
         for mi in MachineType, t in T
-            #nv = max(round(value(slackk[mi,t]); digits=10), 0.0)
             nv = max(value(slackk[mi,t]), 0.0)
             jsp.status.current_norm += nv^2
         end
-        #@show alpha_step_1, estimate, value(LB), jsp.status.current_norm, step_update
         jsp.status.lower_bound[current_iteration] = value(LB)
         jsp.status.lower_bound_time[current_iteration] = time() - jsp.status.time_start
         if (estimate < 100000) && (estimate - value(LB) > 0) && step_update
             jsp.status.current_step = jsp.parameter.alpha_step_1/(estimate - value(LB))/jsp.status.current_norm
         end
         for mi in MachineType, t in T
-            #temp = round(value(slackk[mi,t]); digits=10)
             temp = value(slackk[mi,t])
-            #if temp > 0
-               # println("slack[$mi,$t] = $temp")
-            #end
             jsp.mult[mi,t] +=  jsp.status.current_step*temp
             jsp.sslackk[mi,t] = temp
-            #jsp.sv_p[mi,t] = round(value(v_p[mi,t]); digits=10)
             jsp.sv_p[mi,t] = value(v_p[mi,t])
-            #if jsp.sv_p[mi,t] > 0
-                #println("v_p[$mi,$t] = $(jsp.sv_p[mi,t])")
-            #end
         end
         jsp.mult .= max.(jsp.mult, 0.0)
         for t in T, i in Ii, j in Jop[i]
-            #jsp.sbI1[i,j,t] = round(value(bTimeI1[i,j,t]); digits=10)
             jsp.sbI1[i,j,t] = value(bTimeI1[i,j,t])
             for j1 in Jop[i], r in R
-                #jsp.sbI2[i,j,j1,r,t] = round(value(bTimeI2[i,j,j1,r,t]); digits=10)
                 jsp.sbI2[i,j,j1,r,t] = value(bTimeI2[i,j,j1,r,t])
             end
         end
@@ -305,11 +292,6 @@ sum(((1-prob)^(j-1)-(1-prob)^(j))*prob_r*(sum(bTimeI2[Ma.i,Ma.j,j,2,k] for k=(t-
             jsp.sTard1[i]     = value(Tard1[i])
             jsp.sTard2[i,j,r] = value(Tard2[i,j,r])
             jsp.sbTime1[i,j]  = value(bTime1[i,j])
-            #=
-            jsp.sTard1[i]     = round(value(Tard1[i]); digits=10)
-            jsp.sTard2[i,j,r] = round(value(Tard2[i,j,r]); digits=10)
-            jsp.sbTime1[i,j]  = round(value(bTime1[i,j]); digits=10)
-            =#
         end
     end
 

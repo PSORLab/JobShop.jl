@@ -113,7 +113,7 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
     end)
 
     valid_flag = false
-    for i=0:2
+    for i=0:3
         optimize!(m)
         jsp.status.time_solve_feasibility += solve_time(m)
         valid_flag = valid_solve(FeasibilityProblem(), m)
@@ -139,10 +139,8 @@ Checks to see whether the feasibility problem should be solved.
 """
 function use_problem(::FeasibilityProblem, d::JobShopProblem)
     @unpack current_norm, current_iteration = d.status
-    @unpack feasible_norm_limit, feasible_interval, feasible_start, verbosity = d.parameter
+    @unpack feasible_norm_limit, feasible_start = d.parameter
     flag = current_iteration >= feasible_start
-    flag &= iszero(mod(current_iteration, feasible_interval))
     flag &= current_norm < feasible_norm_limit
-    (verbosity > 1) && (flag && println("Feasibility problem will be solved."))
     return flag
 end
