@@ -17,8 +17,8 @@ jsprob.parameter.start_norm = 200.0
 jsprob.parameter.start_step = 0.006
 jsprob.parameter.optimizer = CPLEX.Optimizer
 jsprob.parameter.penalty = 60.0
-jsprob.parameter.feasible_norm_limit = 10.0 # TODO: CHANGE BACK TO 2
-jsprob.parameter.feasibility_window = 20000
+jsprob.parameter.feasible_norm_limit = 2.0
+jsprob.parameter.feasibility_window = 2
 jsprob.parameter.iteration_limit = 1000
 
 # solve
