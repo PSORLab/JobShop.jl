@@ -33,7 +33,11 @@ function update_multiplier!(jsp::JobShopProblem)
 end
 
 function update_penalty!(jsp::JobShopProblem)
-    # TODO
+   # if jsp.status.current_iteration > 50
+        if mod(jsp.status.current_iteration - 1, 100) == 0
+            jsp.status.penalty *= 1.03
+        end
+   # end
     return nothing
 end
 

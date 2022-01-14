@@ -6,13 +6,14 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
 
     @unpack I, J, Jop, PartDue, MachineCap, MachineType, R, T, IJT, MIJ, 
             mult, sTard1, sTard2, sbI1, sbI2, sslackk, sv_p = jsp
-    @unpack prob, prob_r, ShiftLength, alpha_step_1 = jsp.parameter
+    @unpack prob, prob_r, ShiftLength = jsp.parameter
     @unpack current_norm, current_iteration, prior_norm, prior_step, 
-            current_step, lower_bound, estimate, penalty, step_update = jsp.status
+            current_step, lower_bound, estimate, penalty = jsp.status
 
     m = direct_model(optimizer_with_attributes(jsp.parameter.optimizer))
     configure!(Subproblem(), jsp, m)
     set_silent(m)
+    #=
     @variables(m, begin              
         -16 <= slackk[MachineType, T] <= 16
         0 <= slackk1[MachineType, T] <= 16
@@ -43,8 +44,7 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
         bTimeI1[i=Ii, Jop[i], T], Bin
         bTimeI2[i=Ii, Jop[i], Jop[i], R, T], Bin                    
      end)
-
-    #=
+     =#
     maxJ = 1:maximum(x->J[x],keys(J)) 
     @variables(m, begin              
         -16 <= slackk[MachineType, T] <= 16
@@ -75,7 +75,7 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
         bTimeI1[Ii, maxJ, T], Bin
         bTimeI2[Ii, maxJ, j1=maxJ, R, T], Bin                    
     end)
-    =#
+    #=
         @expressions(m, begin
         Tard1[i=I], W31[i]*2*T[end]
         Tard2[i=I, j=Jop[i], r=R], W32[i,j,r]*2*T[end]
@@ -95,8 +95,7 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
                     sum(mult[mt,t]*sslackk[mt, t] for mt in MachineType, t in T) + 
                     sum((penalty/100)*sv_p[mt,t] for mt in MachineType, t in T))
     end)
-    
-    #=
+    =#
     @expression(m, Tard1[i=I], W31[i]*2*T[end])
     @expression(m, Tard2[i=I, j=maxJ, r=R], W32[i,j,r]*2*T[end])
     @expression(m, LB, sum(((1-prob)^J[i])*Tard1[i] for i = I) + 
@@ -104,11 +103,7 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
                        sum((((1-prob)^(j-1) - (1-prob)^j)*prob_r)*Tard2[i,j,2] for i = I, j = Jop[i]) + 
                        sum(mult[mt,t]*slackk[mt, t] for mt in MachineType, t in T) + 
                        sum((penalty/100)*v_p[mt,t] for mt in MachineType, t in T)) 
-    #@expression(m, LB, sum(Tard1[i]*(1-prob)^J[i] for i in I)) #+
-        #sum(Tard2[i,j,1]*((1-prob)^(j-1) - (1-prob)^j)*(1-prob_r) for i in I, j in Jop[i]) + 
-        #sum(Tard2[i,j,2]*((1-prob)^(j-1) - (1-prob)^j)*prob_r for i in I, j in Jop[i]) +
-        #sum(mult[mt,t]*slackk[mt, t] for mt in MachineType, t in T) + 
-        #sum((penalty/100)*v_p[mt,t] for mt in MachineType, t in T))
+
     sp = sum(i -> sTard1[i]*(1-prob)^J[i], I)
     for i in I, j in Jop[i]
         sp += sTard2[i,j,1]*((1-prob)^(j-1) - (1-prob)^j)*(1-prob_r)
@@ -118,14 +113,14 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
         sp += mult[mt,t]*sslackk[mt,t]
         sp += (penalty/100)*sv_p[mt,t]
     end
-    # @show sp
+
     @expression(m, TotalTard,  sum(Tard1[i]*(1-prob)^J[i] for i in I) + 
                 sum(Tard2[i,j,1]*((1-prob)^(j-1) - (1-prob)^j)*(1-prob_r) for i in I, j in Jop[i]) + 
                 sum(Tard2[i,j,2]*((1-prob)^(j-1) - (1-prob)^j)*prob_r for i in I, j in Jop[i]) +
                 sum(mult[mt,t]*slackk[mt, t] for mt in MachineType, t in T) + 
                 sum((penalty/100)*v_p[mt,t] for mt in MachineType, t in T) -
                 sp)
-    =#
+
     @objective(m, Min, TotalTard)
 
     @constraints(m, begin

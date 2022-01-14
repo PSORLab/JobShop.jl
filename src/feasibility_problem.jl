@@ -84,7 +84,7 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
         [i=I, j1=Jop[i], r=R, j = 1:(J[i]-1); J[i] >= 2],  cTime2[i,j,j1,r] + 1 <= bTime2[i,j+1,j1,r]
 
         [i=I, j1=Jop[i]; J[i] >= 2],    y[i,j1] >= cTime1[i,j1]/ShiftLength
-        [i=I, j1=Jop[i]; J[i] >= 2],    y[i,j1] <= cTime1[i,j1]/ShiftLength+0.9999
+        [i=I, j1=Jop[i]; J[i] >= 2],    y[i,j1] <= cTime1[i,j1]/ShiftLength + 0.9999
         [i=I, j1=Jop[i]; J[i] >= 2],    y[i,j1] <= (bTime2[i,1,j1,1]-1)/ShiftLength
         [i=I, j1=Jop[i]; J[i] >= 2],    y[i,j1] <= (bTime2[i,j1,j1,2]-1)/ShiftLength
     end)
@@ -113,19 +113,25 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
     end)
 
     valid_flag = false
-    for i=0:3
+    for i=1:20
         optimize!(m)
         jsp.status.time_solve_feasibility += solve_time(m)
         valid_flag = valid_solve(FeasibilityProblem(), m)
         if valid_flag
             if primal_status(m) == MOI.FEASIBLE_POINT
-                @show i, objective_value(m)
-                jsp.status.upper_bound_time[jsp.status.current_iteration + i] = time() - jsp.status.time_start
-                jsp.status.upper_bound[jsp.status.current_iteration + i] = objective_value(m)
+                @show i, objective_bound(m), objective_value(m)
+                bc_i = jsp.status.current_iteration + i - 1
+                bc_t = time() - jsp.status.time_start
+                jsp.status.lower_bound_time[bc_i] = bc_t
+                jsp.status.upper_bound_time[bc_i] = bc_t
+                jsp.status.lower_bound[bc_i] = objective_bound(m)
+                jsp.status.upper_bound[bc_i] = objective_value(m)
             end
         end
     end
     jsp.status.feasible_problem_found = valid_flag
+
+    primal_feasibility_report(v -> value(v), m)
 
     close_problem!(m)
     jsp.status.time_total_feasibility = time() - feasibility_start

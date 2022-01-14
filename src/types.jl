@@ -43,12 +43,8 @@ Base.@kwdef mutable struct SolveParameter
     prob_r::Float64         = 0.2
     ShiftLength::Int        = 18
     penalty::Float64 = 120.0
-    "alpha_step parameter 1"
-    alpha_step_1::Float64 = 0.5/20
-    "alpha_step parameter 2"
-    alpha_step_2::Float64 = 0.5
     "starting estimate"
-    estimate = 1400.0
+    estimate::Float64 = 1400.0
     "Absolute tolerance criteria for termination"
     absolute_tolerance::Float64 = 1E-3
     "Relative tolerance criteria for termination"
@@ -73,7 +69,6 @@ Storage to characterize the state of the solution routine.
 $(TYPEDFIELDS)
 """
 Base.@kwdef mutable struct SolveStatus
-    step_update::Bool = false
     penalty::Float64 = 120.0
     current_iteration::Int = 0
     current_norm::Float64 = 100.0
@@ -87,8 +82,6 @@ Base.@kwdef mutable struct SolveStatus
     lower_bound_time::Dict{Int,Float64} = Dict{Int,Float64}()
     upper_bound_time::Dict{Int,Float64} = Dict{Int,Float64}()
     estimate::Float64 = 0.0
-    "current M"
-    current_M::Int = 0
     maxest::Float64 = -100000
     "Time at which solution algorithm begins"
     time_start::Float64 = 0.0
@@ -127,7 +120,7 @@ Base.@kwdef mutable struct JobShopProblem
     sv_p::Matrix{Float64} = zeros(Float64,2,2)
     mult::Matrix{Float64} = zeros(Float64,2,2)
     sTard1::Vector{Float64} = Float64[]
-    sTard2 = Dict()
+    sTard2::Array{Float64,3} = zeros(Float64,2,2,2)
     T::UnitRange{Int} = 1:220
     sbTime1 = nothing
     status::SolveStatus       = SolveStatus()
@@ -138,7 +131,6 @@ function initialize!(j::JobShopProblem)
     @unpack MachineType, T = j
     j.mult = zeros(length(MachineType), length(T))
     j.status.current_iteration = 1
-    j.status.current_M = 0
     j.status.lower_bound[0] = -Inf
     j.status.upper_bound[0] = j.parameter.start_upper_bound
     j.status.estimate = j.parameter.estimate
@@ -147,8 +139,6 @@ function initialize!(j::JobShopProblem)
     j.status.prior_norm = j.parameter.start_norm
     j.status.prior_step = j.parameter.start_step
     j.status.penalty = j.parameter.penalty
-    j.status.step_update = false
-
     j.status.time_start = time()
     return
 end
