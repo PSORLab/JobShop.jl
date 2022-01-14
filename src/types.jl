@@ -9,20 +9,6 @@ abstract type AbstractLagrangianSubproblem end
 """
 $(TYPEDEF)
 
-Type used to indicate components shared by original, feasibility, and subproblems.
-"""
-struct SharedProblem <: AbstractLagrangianSubproblem end
-
-"""
-$(TYPEDEF)
-
-Type used to indicate the original problem.
-"""
-struct OriginalProblem <: AbstractLagrangianSubproblem end
-
-"""
-$(TYPEDEF)
-
 Type used to indicate the feasibility problem solved at termination.
 """
 struct FeasibilityProblem <: AbstractLagrangianSubproblem end
@@ -30,20 +16,9 @@ struct FeasibilityProblem <: AbstractLagrangianSubproblem end
 """
 $(TYPEDEF)
 
-Type used to indicate the problem solved to determine stepsize.
-"""
-struct StepsizeProblem <: AbstractLagrangianSubproblem end
-
-"""
-$(TYPEDEF)
-
 Type used to indicate the subproblem.
 """
 struct Subproblem <: AbstractLagrangianSubproblem end
-
-"""
-"""
-struct CoordinatingProblem <: AbstractLagrangianSubproblem end
 
 struct PartOpT
     i::Int
@@ -82,16 +57,9 @@ Base.@kwdef mutable struct SolveParameter
     iteration_limit::Int = 5000
     "Starting upper bound"
     start_upper_bound::Float64 = Inf
-    "feasible_labda_iteration"
-    feasible_interval::Int = 7
-    "feasible lambda norm limit"
     feasible_norm_limit::Float64 = 10.0
     "feasible lambda"
     feasible_start::Int = 100
-    stepsize_interval::Int = 25
-    stepsize_start::Float64 = 37.5
-    "Upper bound for dual values used in feasibility problem formulation"
-    stepsize_lambda_max = 232
     verbosity::Int = 1
     optimizer = nothing
     penalty_increase_iteration::Int = 4000
@@ -136,6 +104,7 @@ Base.@kwdef mutable struct SolveStatus
     time_solve_feasibility::Float64 = 0.0
     "Total time spent solving feasibility problems"
     time_total_feasibility::Float64 = 0.0
+    feasible_problem_found::Bool = false
 end
 
 Base.@kwdef mutable struct JobShopProblem
@@ -163,7 +132,6 @@ Base.@kwdef mutable struct JobShopProblem
     sbTime1 = nothing
     status::SolveStatus       = SolveStatus()
     parameter::SolveParameter = SolveParameter()
-    lambd::Vector{Matrix{Float64}} = Matrix{Float64}[]
 end
 
 function initialize!(j::JobShopProblem)
@@ -182,10 +150,6 @@ function initialize!(j::JobShopProblem)
     j.status.step_update = false
 
     j.status.time_start = time()
-    empty!(j.lambd)
-    for i in 1:6000
-        push!(j.lambd, zeros(length(MachineType),length(T)))
-    end
     return
 end
 
