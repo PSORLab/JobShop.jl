@@ -2,7 +2,7 @@
 
 =#
 
-const CPLEX_SEED = 12
+const CPLEX_SEED = 0
 
 function cplex_config!(m::Model)
     set_optimizer_attribute(m, "CPX_PARAM_RANDOMSEED", CPLEX_SEED)

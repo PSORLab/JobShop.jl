@@ -125,6 +125,7 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
             end
         end
     end
+    jsp.status.feasible_problem_found = valid_flag
 
     close_problem!(m)
     jsp.status.time_total_feasibility = time() - feasibility_start
