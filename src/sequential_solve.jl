@@ -1,6 +1,6 @@
 
 """
-$TYPEDSIGNATURES
+$(TYPEDSIGNATURES)
 
 Checks termination of the main algorithm.
 """
@@ -15,11 +15,22 @@ function terminated(j::JobShopProblem)
     return false
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Update the stepsize.
+"""
 function update_stepsize!(jsp::JobShopProblem)
     @unpack prior_norm, current_norm, prior_step, current_iteration = jsp.status
-    if current_iteration > 20
-        jsp.status.current_step = 0.995*prior_step*sqrt(prior_norm/current_norm)
+    if (current_iteration > 20) #iszero(mod(current_iteration, 20)) && (current_iteration > 1)
+        MM = 50
+        r = 0.05
+        coeff = 1 - 1/MM/current_iteration^(1 - 1/current_iteration^r)
+        term = prior_step*sqrt(prior_norm/current_norm)
+        #@show coeff, term
+        jsp.status.current_step = coeff*term
     end
+    # (k>20) step = (1-1/MM/Math.pow(k,1-1/Math.pow(k,r)))*oldstep*Math.sqrt(oldnorm/norm)
     return nothing
 end
 
@@ -33,11 +44,17 @@ function update_multiplier!(jsp::JobShopProblem)
 end
 
 function update_penalty!(jsp::JobShopProblem)
+    @unpack penalty_iteration, penalty_factor = jsp.parameter
    # if jsp.status.current_iteration > 50
-        if mod(jsp.status.current_iteration - 1, 100) == 0
-            jsp.status.penalty *= 1.03
-        end
+     #   if mod(jsp.status.current_iteration - 1, penalty_iteration) == 0
+      #      jsp.status.penalty *= penalty_factor
+       # end
    # end
+    #=
+    if mod(current_iteration, jsp.parameter.penalty_iteration) == 0
+        jsp.status.penalty += 1
+    end
+    =#
     return nothing
 end
 
@@ -45,7 +62,7 @@ function sequential_solve!(jsp::JobShopProblem)
     initialize!(jsp)
     k = 0
     while !terminated(jsp)
-        if solve_subproblem(jsp, jsp.Ii[k + 1])
+        if solve_subproblem(jsp, jsp.Ii[k + 1], k + 1)
             update_stepsize!(jsp)
             update_multiplier!(jsp)
             update_penalty!(jsp)

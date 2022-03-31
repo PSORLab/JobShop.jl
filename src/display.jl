@@ -1,5 +1,5 @@
 """
-$TYPEDSIGNATURES
+$(TYPEDSIGNATURES)
 
 Displays the statistics for each iteration.
 """
@@ -8,7 +8,7 @@ function display_iteration(j::JobShopProblem, i::Int)
             time_solve_stepsize, current_norm, current_step = j.status
     total_time = time() - time_start
     qual = (estimate-current_lower_bound(j))/estimate*100
-    if (current_upper_bound(j) < 100000.0) || (j.parameter.verbosity > 1)
+    if (j.parameter.verbosity >= 1)
         outstring = @sprintf("Iteration:  %4i, (S):  %4i  ", current_iteration, i)
         outstring *= @sprintf("SDV:  %.3e  FC:  %.3e  ", current_lower_bound(j), current_upper_bound(j))
         outstring *= @sprintf("GAP:  %.3e  Qual.:  %.3e  ", current_abs_gap(j), qual)

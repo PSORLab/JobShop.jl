@@ -2,7 +2,7 @@
 read_join(p::String,s::String) = CSV.read(joinpath(p,s), DataFrame, header=1)
 
 """
-$TYPEDSIGNATURES
+$(TYPEDSIGNATURES)
 
 Load a problem defined by .csv files in the provided path.
 """
@@ -87,6 +87,9 @@ function load_from_csv(path::String)
     jsp.sTard1 = zeros(nbPart)
     jsp.sTard2 = zeros(nbPart, nbOperation, length(jsp.R)) 
     jsp.sbTime1 = zeros(nbPart,nbOperation)
+    for i=1:nbPart, j=1:nbOperation, j1=1:nbOperation, r in jsp.R
+        jsp.sbTime2[i,j,j1,r] = 0.0
+    end
     return jsp
 end
 

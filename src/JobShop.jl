@@ -2,7 +2,7 @@ module JobShop
 
 using CSV, DataFrames, DocStringExtensions, JuMP, Printf, Requires, UnPack
 
-export configure!, load_from_csv, sequential_solve!
+export configure!, load_from_csv, sequential_solve!, Ext, JobShopProblem
 
 include(joinpath(@__DIR__, "types.jl"))
 include(joinpath(@__DIR__, "load_csv.jl"))

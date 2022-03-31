@@ -6,6 +6,12 @@ function gurobi_config!(m::Model)
     return nothing
 end
 
+
+"""
+$(TYPEDSIGNATURES)
+
+Set parameters used by Gurobi when solving subproblems.
+"""
 function configure!(::Subproblem, v::Val{:Gurobi}, j::JobShopProblem, m::Model)
     gurobi_config!(m)
     if current_iteration(j) == 1
@@ -22,6 +28,11 @@ function configure!(::Subproblem, v::Val{:Gurobi}, j::JobShopProblem, m::Model)
     return
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Set parameters used by Gurobi when solving the feasibility problem.
+"""
 function configure!(::FeasibilityProblem, v::Val{:Gurobi}, j::JobShopProblem, m::Model)
     gurobi_config!(m)
     set_time_limit_sec(m, 60)

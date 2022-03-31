@@ -1,28 +1,40 @@
+
+function feasibility_starting_time_constraints!(ext::AbstractExt, jsp::JobShopProblem, m, bTime1, sbTime1)
+    @unpack I, J, Jop = jsp
+    @unpack feasibility_window = jsp.parameter 
+    @constraints(m, begin
+        [i=I, j=Jop[i]], bTime1[i,j] - sbTime1[i,j] <= feasibility_window + 0.001
+        [i=I, j=Jop[i]], bTime1[i,j] - sbTime1[i,j] >= -feasibility_window - 0.001
+    end)
+    return
+end
+
 """
-$TYPEDSIGNATURES
+$(TYPEDSIGNATURES)
 
 Constructs the feasibility problem called after convergence using 
-estimates for  starting times obtain by Lagrangian relaxation.
+estimates for the starting times obtain by Lagrangian relaxation.
 """
 function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
 
     feasibility_start = time()
 
-    @unpack I, J, Jop, PartDue, MachineCap, MachineType, R, T, IJT, MIJ, sbTime1 = jsp
-    @unpack upper_bound = jsp.status
-    @unpack prob, prob_r, ShiftLength, feasibility_window = jsp.parameter 
+    @unpack I, J, Jop, PartDue, MachineCap, MachineType, R, T, IJT, MIJ, 
+            sbTime1, sbTime2, mult, sslackk, sv_p = jsp
+    @unpack upper_bound, penalty = jsp.status
+    @unpack prob, prob_r, ShiftLength, feasible_solve_count, feasible_solve_time, ext = jsp.parameter 
 
     m = direct_model(optimizer_with_attributes(jsp.parameter.optimizer))
     configure!(FeasibilityProblem(), jsp, m)
     set_silent(m)
+    set_time_limit_sec(m, feasible_solve_time)
 
+    @variable(m, 0 <= bTime1[i=I, j=Jop[i]] <= 1000, Int, start = round(sbTime1[i,j]))
+    @variable(m, 0 <= bTime2[i=I, j=Jop[i], j1=Jop[i], r=R] <= 1000, Int, start=round(sbTime2[i,j,j1,r]))
     @variables(m, begin          
         0 <= cTime1[i=I, Jop[i]] <= 1000, Int
-        0 <= cTime2[i=I, Jop[i], Jop[i], R] <= 1000, Int 
+        0 <= cTime2[i=I, Jop[i], Jop[i], R] <= 1000, Int
         bTimeI1[i=I, Jop[i], T], Bin
-
-        0 <= bTime1[i=I, Jop[i]] <= 1000, Int                   
-        0 <= bTime2[i=I, Jop[i], Jop[i], R] <= 1000, Int
         bTimeI2[i=I, Jop[i], Jop[i], R, T], Bin
 
         0 <= ComTime1[I] <= 1000, Int
@@ -57,6 +69,7 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
         sum(Tard2[i,j,1]*((1-prob)^(j-1) - (1-prob)^j)*(1-prob_r) for i in I, j in Jop[i]) + 
         sum(Tard2[i,j,2]*((1-prob)^(j-1) - (1-prob)^j)*prob_r for i in I, j in Jop[i])
         )
+
     @objective(m, Min, TotalTard)
 
     @constraints(m, begin
@@ -93,13 +106,10 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
         sum(((1-prob)^(Ma.j-1))*sum(bTimeI1[Ma.i,Ma.j,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for p in IJT, Ma in MIJ if (p.i == Ma.i && p.j == Ma.j && Ma.m == mi)) +
         sum(((1-prob)^(j-1)-(1-prob)^(j))*(1-prob_r)*sum(bTimeI2[Ma.i,Ma.j,j,1,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for Ma in MIJ, p in IJT, j in Jop[Ma.i] if (p.i == Ma.i && p.j == Ma.j && Ma.m == mi)) +
         sum(((1-prob)^(j-1)-(1-prob)^(j))*prob_r*sum(bTimeI2[Ma.i,Ma.j,j,2,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for Ma in MIJ, p in IJT, j in Jop[Ma.i] if (p.i == Ma.i && p.j == Ma.j && Ma.m == mi))
-        <= MachineCap[mi] # TODO: maybe...
+        <= MachineCap[mi] + 0.00001 # TODO: maybe...
     )
 
     @constraints(m, begin
-        [i=I, j=Jop[i]], bTime1[i,j] - sbTime1[i,j] <= feasibility_window + 0.001
-        [i=I, j=Jop[i]], bTime1[i,j] - sbTime1[i,j] >= -feasibility_window - 0.001
-
         [i=I, j=Jop[i]], sum(bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) == 1
         [i=I, j=Jop[i]], sum(t*bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) == bTime1[i,j]
         [i=I, j=Jop[i]], sum((t+P.t)*bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) - 1 == cTime1[i,j]
@@ -112,26 +122,33 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
         [i=I],                  ComTime1[i]      == cTime1[i,J[i]]
     end)
 
+    feasibility_starting_time_constraints!(ext, jsp, m, bTime1, sbTime1)
+
     valid_flag = false
-    for i=1:20
+    for i=1:feasible_solve_count
         optimize!(m)
         jsp.status.time_solve_feasibility += solve_time(m)
         valid_flag = valid_solve(FeasibilityProblem(), m)
         if valid_flag
             if primal_status(m) == MOI.FEASIBLE_POINT
-                @show i, objective_bound(m), objective_value(m)
                 bc_i = jsp.status.current_iteration + i - 1
                 bc_t = time() - jsp.status.time_start
                 jsp.status.lower_bound_time[bc_i] = bc_t
                 jsp.status.upper_bound_time[bc_i] = bc_t
-                jsp.status.lower_bound[bc_i] = objective_bound(m)
+                jsp.status.lower_bound[bc_i] = jsp.status.lower_bound[maximum(keys(jsp.status.lower_bound))]
                 jsp.status.upper_bound[bc_i] = objective_value(m)
             end
         end
     end
     jsp.status.feasible_problem_found = valid_flag
+    println("Was a feasible point found? $(valid_flag)")
 
-    primal_feasibility_report(v -> value(v), m)
+    for i=I, j=Jop[i]
+        jsp.feasible_bTime1[(i,j)] = round(value(bTime1[i,j]))
+    end
+    for i=I, j1 =Jop[i], j2 = Jop[i], r = R
+        jsp.feasible_bTime2[(i,j1,j2,r)] = round(value(bTime2[i,j1,j2,r]))
+    end
 
     close_problem!(m)
     jsp.status.time_total_feasibility = time() - feasibility_start
@@ -140,7 +157,7 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
 end
 
 """
-$TYPEDSIGNATURES
+$(TYPEDSIGNATURES)
 
 Checks to see whether the feasibility problem should be solved.
 """

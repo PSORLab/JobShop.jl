@@ -1,19 +1,30 @@
 
 pos_sqr(x) = max(value(x), 0.0)^2
-function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
+
+"""
+$(TYPEDSIGNATURES)
+
+Solve Lagrangian subproblem.
+"""
+function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int}, q::Int)
 
     subproblem_start = time()
 
     @unpack I, J, Jop, PartDue, MachineCap, MachineType, R, T, IJT, MIJ, 
-            mult, sTard1, sTard2, sbI1, sbI2, sslackk, sv_p = jsp
+            mult, sTard1, sTard2, sbI1, sbI2, sslackk, sv_p, sbI1_indx, 
+            sbI2_indx, sbI1_indx_n, sbI2_indx_n, sbTime1, sbTime2 = jsp
     @unpack prob, prob_r, ShiftLength = jsp.parameter
     @unpack current_norm, current_iteration, prior_norm, prior_step, 
             current_step, lower_bound, estimate, penalty = jsp.status
 
+    stime = time()
+
     m = direct_model(optimizer_with_attributes(jsp.parameter.optimizer))
     configure!(Subproblem(), jsp, m)
     set_silent(m)
-    #=
+
+    @variable(m, 0 <= bTime1[i=Ii, j=Jop[i]] <= 1000, Int, start = round(sbTime1[i,j]))
+    @variable(m, 0 <= bTime2[i=Ii, j=Jop[i], j1=Jop[i], r=R] <= 1000, Int, start=round(sbTime2[i,j,j1,r]))
     @variables(m, begin              
         -16 <= slackk[MachineType, T] <= 16
         0 <= slackk1[MachineType, T] <= 16
@@ -35,48 +46,15 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
         alpha32[i=I, j=Jop[i], R], Bin
 
         0 <= y[i=Ii, Jop[i]] <= 1000, Int
-        0 <= cTime1[i=Ii, Jop[i]] <= 1000, Int
-        0 <= bTime1[i=Ii, Jop[i]] <= 1000, Int                   
+        0 <= cTime1[i=Ii, Jop[i]] <= 1000, Int                 
         0 <= cTime2[i=Ii, Jop[i], Jop[i], R] <= 1000, Int 
-        0 <= bTime2[i=Ii, Jop[i], Jop[i], R] <= 1000, Int
         0 <= ComTime1[Ii] <= 1000, Int
         0 <= ComTime2[i=Ii, Jop[i], R] <= 1000, Int
         bTimeI1[i=Ii, Jop[i], T], Bin
         bTimeI2[i=Ii, Jop[i], Jop[i], R, T], Bin                    
-     end)
-     =#
-    maxJ = 1:maximum(x->J[x],keys(J)) 
-    @variables(m, begin              
-        -16 <= slackk[MachineType, T] <= 16
-        0 <= slackk1[MachineType, T] <= 16
-        0 <= v_p[MachineType, T] <= 16
-        # variables used for first SOS rearrangement
-        0 <= W11[I] <= 1
-        0 <= W21[I] <= 1
-        0 <= W31[I] <= 1
-        alpha11[I], Bin  
-        alpha21[I], Bin 
-        alpha31[I], Bin
-        # variables used for second SOS rearrangement
-        0 <= W12[I, maxJ, R] <= 1
-        0 <= W22[I, maxJ, R] <= 1
-        0 <= W32[I, maxJ, R] <= 1
-        alpha12[I, maxJ, R], Bin
-        alpha22[I, maxJ, R], Bin
-        alpha32[I, maxJ, R], Bin
-
-        0 <= y[Ii, maxJ] <= 1000, Int
-        0 <= cTime1[Ii, maxJ] <= 1000, Int
-        0 <= bTime1[Ii, maxJ] <= 1000, Int                   
-        0 <= cTime2[Ii, maxJ, j1=maxJ, R] <= 1000, Int 
-        0 <= bTime2[Ii, maxJ, j1=maxJ, R] <= 1000, Int
-        0 <= ComTime1[Ii] <= 1000, Int
-        0 <= ComTime2[Ii, maxJ, R] <= 1000, Int
-        bTimeI1[Ii, maxJ, T], Bin
-        bTimeI2[Ii, maxJ, j1=maxJ, R, T], Bin                    
     end)
-    #=
-        @expressions(m, begin
+    
+    @expressions(m, begin
         Tard1[i=I], W31[i]*2*T[end]
         Tard2[i=I, j=Jop[i], r=R], W32[i,j,r]*2*T[end]
         LB, sum(Tard1[i]*(1-prob)^J[i] for i in I) +
@@ -95,31 +73,6 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
                     sum(mult[mt,t]*sslackk[mt, t] for mt in MachineType, t in T) + 
                     sum((penalty/100)*sv_p[mt,t] for mt in MachineType, t in T))
     end)
-    =#
-    @expression(m, Tard1[i=I], W31[i]*2*T[end])
-    @expression(m, Tard2[i=I, j=maxJ, r=R], W32[i,j,r]*2*T[end])
-    @expression(m, LB, sum(((1-prob)^J[i])*Tard1[i] for i = I) + 
-                       sum((((1-prob)^(j-1) - (1-prob)^j)*(1-prob_r))*Tard2[i,j,1] for i = I, j = Jop[i]) +
-                       sum((((1-prob)^(j-1) - (1-prob)^j)*prob_r)*Tard2[i,j,2] for i = I, j = Jop[i]) + 
-                       sum(mult[mt,t]*slackk[mt, t] for mt in MachineType, t in T) + 
-                       sum((penalty/100)*v_p[mt,t] for mt in MachineType, t in T)) 
-
-    sp = sum(i -> sTard1[i]*(1-prob)^J[i], I)
-    for i in I, j in Jop[i]
-        sp += sTard2[i,j,1]*((1-prob)^(j-1) - (1-prob)^j)*(1-prob_r)
-        sp += sTard2[i,j,2]*((1-prob)^(j-1) - (1-prob)^j)*prob_r
-    end
-    for mt in MachineType, t in T
-        sp += mult[mt,t]*sslackk[mt,t]
-        sp += (penalty/100)*sv_p[mt,t]
-    end
-
-    @expression(m, TotalTard,  sum(Tard1[i]*(1-prob)^J[i] for i in I) + 
-                sum(Tard2[i,j,1]*((1-prob)^(j-1) - (1-prob)^j)*(1-prob_r) for i in I, j in Jop[i]) + 
-                sum(Tard2[i,j,2]*((1-prob)^(j-1) - (1-prob)^j)*prob_r for i in I, j in Jop[i]) +
-                sum(mult[mt,t]*slackk[mt, t] for mt in MachineType, t in T) + 
-                sum((penalty/100)*v_p[mt,t] for mt in MachineType, t in T) -
-                sp)
 
     @objective(m, Min, TotalTard)
 
@@ -157,6 +110,7 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
             end)
         end
     end
+
     @constraints(m, begin
         [k=setdiff(I,Ii)],                    Tard1[k] == sTard1[k]
         [k=setdiff(I,Ii), j=Jop[k], r=R], Tard2[k,j,r] == sTard2[k,j,r]
@@ -164,72 +118,27 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int})
         slackk .<= v_p
         slackk .>= -v_p
     end)
+ 
+    s = zeros(length(MachineType), length(T))
+    sbI1_i = sbI1_indx[q]
+    sbI2_i = sbI2_indx[q]
+    sbI1_in = sbI1_indx_n[q]
+    sbI2_in = sbI2_indx_n[q]
+    @inbounds for mi in MachineType, t in T
+        temp = 0.0
+        for (i,j,k) in sbI1_i[mi,t]
+            temp += ((1-prob)^(j-1))*sbI1[i,j,k]
+        end
+        for (i,j,j1,k) in sbI2_i[mi,t]
+            temp += ((1-prob)^(j-1)-(1-prob)^j)*(prob_r*sbI2[i,j,j1,2,k] + (1-prob_r)*sbI2[i,j,j1,1,k])
+        end
+        s[mi,t] = temp
+    end
 
-    # fast unpack for surrogate values
-    outi = fill(true,length(I))
-    for i in Ii
-        outi[i] = false
-    end
-    s123 = zeros(length(MachineType),length(T))
-    for mi in MachineType, t in T
-        t2 = 0.0
-        for Ma in MIJ
-            c = (1-prob)^(Ma.j-1)
-            t1 = 0.0
-            for p in IJT
-                if (p.i == Ma.i) && (p.j == Ma.j) && (Ma.m == mi) && !(p.i in Ii) #&& outi[p.i] # replace this !(p.part in Ii)
-                    for k in (t - p.t + 1):t
-                        if t - p.t + 1 >= 1
-                            t1 += sbI1[Ma.i,Ma.j,k]
-                        end
-                    end
-                end
-            end
-            t2 += c*t1
-        end
-        s123[mi,t] = t2
-    end
-    for mi in MachineType, t in T
-        t2 = 0.0
-        t3 = 0.0
-        for Ma in jsp.MIJ, p in jsp.IJT, j in Jop[Ma.i]
-            if (p.i == Ma.i) && (p.j == Ma.j) && (Ma.m == mi) && !(p.i in Ii)
-                t2a = 0.0
-                t3a = 0.0
-                for k in (t - p.t+1):t
-                    if t - p.t+1 >= 1
-                        t2a += sbI2[Ma.i,Ma.j,j,1,k]
-                        t3a += sbI2[Ma.i,Ma.j,j,2,k]
-                    end
-                end
-                t2 += ((1-prob)^(j-1)-(1-prob)^(j))*(1-prob_r)*t2a
-                t3 += ((1-prob)^(j-1)-(1-prob)^(j))*prob_r*t3a
-            end
-        end
-        #@show mi, t, indx_c
-        s123[mi,t] += t2
-        s123[mi,t] += t3
-    end
-    
-    @constraint(m, [mi in MachineType, t in T],
-        #sum(((1-prob)^(Ma.j-1))*sum(sbI1[Ma.i,Ma.j,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for p in IJT, Ma in MIJ if (p.i == Ma.i && p.j == Ma.j && Ma.m == mi && !(p.i in Ii))) +
-        #sum(((1-prob)^(j-1)-(1-prob)^(j))*(1-prob_r)*sum(sbI2[Ma.i,Ma.j,j,1,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for Ma in MIJ, p in IJT, j in Jop[Ma.i] if p.i == Ma.i && p.j == Ma.j && Ma.m == mi && !(p.i in Ii)) +
-        #sum(((1-prob)^(j-1)-(1-prob)^(j))*prob_r*sum(sbI2[Ma.i,Ma.j,j,2,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for Ma in MIJ, p in IJT, j in Jop[Ma.i] if p.i == Ma.i && p.j == Ma.j && Ma.m == mi && !(p.i in Ii)) +
-        s123[mi,t] +
-        sum(((1-prob)^(Ma.j-1))*sum(bTimeI1[Ma.i,Ma.j,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for p in IJT, Ma in MIJ if (p.i == Ma.i && p.j == Ma.j && Ma.m == mi && (p.i in Ii))) +
-        sum(((1-prob)^(j-1)-(1-prob)^(j))*(1-prob_r)*sum(bTimeI2[Ma.i,Ma.j,j,1,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for Ma in MIJ, p in IJT, j in Jop[Ma.i] if p.i == Ma.i && p.j == Ma.j && Ma.m == mi && (p.i in Ii)) +
-        sum(((1-prob)^(j-1)-(1-prob)^(j))*prob_r*sum(bTimeI2[Ma.i,Ma.j,j,2,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for Ma in MIJ, p in IJT, j in Jop[Ma.i] if p.i == Ma.i && p.j == Ma.j && Ma.m == mi && (p.i in Ii))
-         - MachineCap[mi] + slackk1[mi,t] == slackk[mi,t])
-#=
-@constraint(m, [mi in MachineType, t in T],
-sum((1-prob)^(Ma.j-1)*sum(sbI1[Ma.i,Ma.j,k] for k=(t-Pro.t+1):t if (t-Pro.t+1 >= 1)) for Pro=IJT, Ma=MIJ if ((Pro.i == Ma.i) && (Pro.j == Ma.j) && (Ma.m == mi) && !(Pro.i in Ii))) +
-sum(((1-prob)^(j-1)-(1-prob)^(j))*(1-prob_r)*sum(sbI2[Ma.i,Ma.j,j,1,k] for k=(t-Pro.t+1):t if (t - Pro.t+1 >= 1)) for Ma=MIJ, Pro=IJT, j=Jop[Ma.i] if (Pro.i == Ma.i && Pro.j == Ma.j && Ma.m == mi && !(Pro.i in Ii))) +
-sum(((1-prob)^(j-1)-(1-prob)^(j))*prob_r*sum(sbI2[Ma.i,Ma.j,j,2,k] for k=(t-Pro.t+1):t if (t - Pro.t+1 >= 1)) for Ma=MIJ, Pro=IJT, j=Jop[Ma.i] if (Pro.i == Ma.i && Pro.j == Ma.j && Ma.m == mi && !(Pro.i in Ii))) + 
-sum((1-prob)^(Ma.j-1)*sum(bTimeI1[Ma.i,Ma.j,k] for k=(t-Pro.t+1):t if (t - Pro.t+1 >= 1)) for Pro in IJT, Ma in MIJ if (Pro.i == Ma.i && Pro.j == Ma.j &&  Ma.m == mi && Pro.i in Ii)) +
-sum(((1-prob)^(j-1)-(1-prob)^(j))*(1-prob_r)*sum(bTimeI2[Ma.i,Ma.j,j,1,k] for k=(t-Pro.t+1):t if (t-Pro.t+1 >= 1)) for Ma in MIJ, Pro in IJT, j in Jop[Ma.i] if (Pro.i == Ma.i && Pro.j == Ma.j && Ma.m == mi && Pro.i in Ii)) +
-sum(((1-prob)^(j-1)-(1-prob)^(j))*prob_r*(sum(bTimeI2[Ma.i,Ma.j,j,2,k] for k=(t-Pro.t+1):t if (t-Pro.t+1 >= 1))) for Ma in MIJ, Pro in IJT, j in Jop[Ma.i] if (Pro.i == Ma.i && Pro.j == Ma.j && Ma.m == mi && Pro.i in Ii))
-- MachineCap[mi] + slackk1[mi,t] == slackk[mi,t])
-=#
+    @expression(m, mc_s1[mi=MachineType, t=T], sum(((1-prob)^(j-1))*bTimeI1[i,j,k] for (i,j,k) in sbI1_in[mi,t]))
+    @expression(m, mc_s2[mi=MachineType, t=T], sum(((1-prob)^(j-1)-(1-prob)^(j))*(1-prob_r)*bTimeI2[i,j,j1,1,k] for (i,j,j1,k) in sbI2_in[mi,t]))
+    @expression(m, mc_s3[mi=MachineType, t=T], sum(((1-prob)^(j-1)-(1-prob)^(j))*prob_r*bTimeI2[i,j,j1,2,k] for (i,j,j1,k) in sbI2_in[mi,t]))
+    @constraint(m, [mi=MachineType, t=T], s[mi,t] + mc_s1[mi,t] + mc_s2[mi,t] + mc_s3[mi,t] - MachineCap[mi] + slackk1[mi,t] - slackk[mi,t] == 0.0) 
 
     @constraints(m, begin
 
@@ -240,25 +149,11 @@ sum(((1-prob)^(j-1)-(1-prob)^(j))*prob_r*(sum(bTimeI2[Ma.i,Ma.j,j,2,k] for k=(t-
         [i=Ii, j=Jop[i], j1=Jop[i], r=R], sum(sum(bTimeI2[i,j,j1,r,t] for t in T) for Pro in IJT if Pro.i == i && Pro.j == j) == 1
         [i=Ii, j=Jop[i], j1=Jop[i], r=R], sum(sum(t*bTimeI2[i,j,j1,r,t] for t in T) for Pro in IJT if Pro.i == i && Pro.j == j) == bTime2[i,j,j1,r]
         [i=Ii, j=Jop[i], j1=Jop[i], r=R], sum(sum((t+Pro.t)*bTimeI2[i,j,j1,r,t] for t in T) for Pro in IJT if Pro.i == i && Pro.j == j) - 1 == cTime2[i,j,j1,r]
-
-        #=
-        [i=Ii, j=Jop[i]], sum(bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) == 1
-        [i=Ii, j=Jop[i]], sum(t*bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) == bTime1[i,j]
-        [i=Ii, j=Jop[i]], sum((t+P.t)*bTimeI1[i,j,t] for t in T, P in IJT if has_ij(P,i,j)) - 1 == cTime1[i,j]
-
-        [i=Ii, j=Jop[i], j1=Jop[i], r=R], sum(bTimeI2[i,j,j1,r,t] for t in T, P in IJT if has_ij(P,i,j)) == 1
-        [i=Ii, j=Jop[i], j1=Jop[i], r=R], sum(t*bTimeI2[i,j,j1,r,t] for t in T, P in IJT if has_ij(P,i,j)) == bTime2[i,j,j1,r]
-        [i=Ii, j=Jop[i], j1=Jop[i], r=R], sum((t+P.t)*bTimeI2[i,j,j1,r,t] for t in T, P in IJT if has_ij(P,i,j)) - 1  == cTime2[i,j,j1,r]
-        =#
         
         [i=Ii],                 ComTime1[i]      == cTime1[i,J[i]]
         [i=Ii, j1=Jop[i], r=R], ComTime2[i,j1,r] == cTime2[i,J[i],j1,r]
     end)
-    
     optimize!(m)
-    if mod(current_iteration, jsp.parameter.penalty_increase_iteration) == 0
-        jsp.status.penalty += 1
-    end
 
     jsp.status.time_solve_subprob += solve_time(m)
     valid_flag = valid_solve(Subproblem(), m)
@@ -278,10 +173,17 @@ sum(((1-prob)^(j-1)-(1-prob)^(j))*prob_r*(sum(bTimeI2[Ma.i,Ma.j,j,2,k] for k=(t-
                 jsp.sbI2[i,j,j1,r,t] = value(bTimeI2[i,j,j1,r,t])
             end
         end
-        for i in Ii, j in Jop[i], r in R
-            jsp.sTard1[i]     = value(Tard1[i])
-            jsp.sTard2[i,j,r] = value(Tard2[i,j,r])
-            jsp.sbTime1[i,j]  = value(bTime1[i,j])
+        for i in Ii
+            jsp.sTard1[i] = value(Tard1[i])
+            for j in Jop[i]
+                jsp.sbTime1[i,j] = value(bTime1[i,j])
+                for r in R
+                    jsp.sTard2[i,j,r] = value(Tard2[i,j,r])
+                    for j1 in Jop[i]
+                        jsp.sbTime2[i,j,j1,r] = value(bTime2[i,j,j1,r])
+                    end
+                end
+            end
         end
     end
 
