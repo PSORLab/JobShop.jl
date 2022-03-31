@@ -20,7 +20,7 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
     feasibility_start = time()
 
     @unpack I, J, Jop, PartDue, MachineCap, MachineType, R, T, IJT, MIJ, 
-            sbTime1, sbTime2, mult, sslackk, sv_p = jsp
+            sbTime1, sbTime2, mult, sslackk, sv_p, Tmax = jsp
     @unpack upper_bound, penalty = jsp.status
     @unpack prob, prob_r, ShiftLength, feasible_solve_count, feasible_solve_time, ext = jsp.parameter 
 
@@ -29,18 +29,18 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
     set_silent(m)
     set_time_limit_sec(m, feasible_solve_time)
 
-    @variable(m, 0 <= bTime1[i=I, j=Jop[i]] <= 1000, Int, start = round(sbTime1[i,j]))
-    @variable(m, 0 <= bTime2[i=I, j=Jop[i], j1=Jop[i], r=R] <= 1000, Int, start=round(sbTime2[i,j,j1,r]))
+    @variable(m, 0 <= bTime1[i=I, j=Jop[i]] <= Tmax, Int, start = round(sbTime1[i,j]))
+    @variable(m, 0 <= bTime2[i=I, j=Jop[i], j1=Jop[i], r=R] <= Tmax, Int, start=round(sbTime2[i,j,j1,r]))
     @variables(m, begin          
-        0 <= cTime1[i=I, Jop[i]] <= 1000, Int
-        0 <= cTime2[i=I, Jop[i], Jop[i], R] <= 1000, Int
+        0 <= cTime1[i=I, Jop[i]] <= Tmax, Int
+        0 <= cTime2[i=I, Jop[i], Jop[i], R] <= Tmax, Int
         bTimeI1[i=I, Jop[i], T], Bin
         bTimeI2[i=I, Jop[i], Jop[i], R, T], Bin
 
-        0 <= ComTime1[I] <= 1000, Int
-        0 <= ComTime2[i=I,Jop[i],R] <= 1000, Int
+        0 <= ComTime1[I] <= Tmax, Int
+        0 <= ComTime2[i=I,Jop[i],R] <= Tmax, Int
 
-        0 <= y[i=I, Jop[i]] <= 1000, Int   
+        0 <= y[i=I, Jop[i]] <= Tmax, Int   
 
         # variables used for first SOS rearrangement
         0 <= W11[I] <= 1

@@ -142,6 +142,8 @@ Base.@kwdef mutable struct SolveStatus
 end
 
 Base.@kwdef mutable struct JobShopProblem
+    "Maximum time window considered."
+    Tmax::Int = 1000
     "Time dart is due"
     PartDue::Vector{Int}    = Int[]
     MachineCap::Vector{Int} = Int[]

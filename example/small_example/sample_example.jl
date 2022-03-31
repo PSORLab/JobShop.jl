@@ -7,6 +7,7 @@ using JobShop
 # define problem
 jsprob = load_from_csv(@__DIR__)
 jsprob.T = 1:75
+jsprob.Tmax = 1000
 jsprob.parameter.ShiftLength = 18
 jsprob.parameter.prob = 0.05
 jsprob.parameter.prob_r = 0.2

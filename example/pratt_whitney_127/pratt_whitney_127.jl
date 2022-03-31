@@ -8,13 +8,14 @@ Pkg.add(url="PATH_TO_JOBSHOP_PACKAGE HERE")
 
 using JobShop
 
-function solve_example(pi, pf, sc, fw, nl)
+function solve_example(p_i, pf, sc, fw, nl)
     jsprob = load_from_csv(@__DIR__)
     jsprob.parameter.start_upper_bound = 8000.0
     jsprob.parameter.ShiftLength = 18
     jsprob.parameter.prob = 0.05
     jsprob.parameter.prob_r = 0.2
     jsprob.T = 1:220
+    jsprob.Tmax = 1000
 
     jsprob.parameter.start_norm = 200.0
     jsprob.parameter.start_step = 0.006
@@ -25,7 +26,7 @@ function solve_example(pi, pf, sc, fw, nl)
     jsprob.parameter.feasibility_window = fw
     jsprob.parameter.feasible_solve_count = sc
     jsprob.parameter.iteration_limit = 10000
-    jsprob.parameter.penalty_iteration = pi
+    jsprob.parameter.penalty_iteration = p_i
     jsprob.parameter.penalty_factor = pf
     jsprob.parameter.feasible_solve_time = 120.0
     jsprob.parameter.random_seed = 1

@@ -12,7 +12,7 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int}, q::Int)
 
     @unpack I, J, Jop, PartDue, MachineCap, MachineType, R, T, IJT, MIJ, 
             mult, sTard1, sTard2, sbI1, sbI2, sslackk, sv_p, sbI1_indx, 
-            sbI2_indx, sbI1_indx_n, sbI2_indx_n, sbTime1, sbTime2 = jsp
+            sbI2_indx, sbI1_indx_n, sbI2_indx_n, sbTime1, sbTime2, Tmax = jsp
     @unpack prob, prob_r, ShiftLength = jsp.parameter
     @unpack current_norm, current_iteration, prior_norm, prior_step, 
             current_step, lower_bound, estimate, penalty = jsp.status
@@ -23,8 +23,8 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int}, q::Int)
     configure!(Subproblem(), jsp, m)
     set_silent(m)
 
-    @variable(m, 0 <= bTime1[i=Ii, j=Jop[i]] <= 1000, Int, start = round(sbTime1[i,j]))
-    @variable(m, 0 <= bTime2[i=Ii, j=Jop[i], j1=Jop[i], r=R] <= 1000, Int, start=round(sbTime2[i,j,j1,r]))
+    @variable(m, 0 <= bTime1[i=Ii, j=Jop[i]] <= Tmax, Int, start = round(sbTime1[i,j]))
+    @variable(m, 0 <= bTime2[i=Ii, j=Jop[i], j1=Jop[i], r=R] <= Tmax, Int, start=round(sbTime2[i,j,j1,r]))
     @variables(m, begin              
         -16 <= slackk[MachineType, T] <= 16
         0 <= slackk1[MachineType, T] <= 16
@@ -45,11 +45,11 @@ function solve_subproblem(jsp::JobShopProblem, Ii::Vector{Int}, q::Int)
         alpha22[i=I, j=Jop[i], R], Bin
         alpha32[i=I, j=Jop[i], R], Bin
 
-        0 <= y[i=Ii, Jop[i]] <= 1000, Int
-        0 <= cTime1[i=Ii, Jop[i]] <= 1000, Int                 
-        0 <= cTime2[i=Ii, Jop[i], Jop[i], R] <= 1000, Int 
-        0 <= ComTime1[Ii] <= 1000, Int
-        0 <= ComTime2[i=Ii, Jop[i], R] <= 1000, Int
+        0 <= y[i=Ii, Jop[i]] <= Tmax, Int
+        0 <= cTime1[i=Ii, Jop[i]] <= Tmax, Int                 
+        0 <= cTime2[i=Ii, Jop[i], Jop[i], R] <= Tmax, Int 
+        0 <= ComTime1[Ii] <= Tmax, Int
+        0 <= ComTime2[i=Ii, Jop[i], R] <= Tmax, Int
         bTimeI1[i=Ii, Jop[i], T], Bin
         bTimeI2[i=Ii, Jop[i], Jop[i], R, T], Bin                    
     end)
