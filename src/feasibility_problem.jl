@@ -3,10 +3,10 @@ function feasibility_starting_time_constraints!(ext::AbstractExt, jsp::JobShopPr
     @unpack I, J, Jop = jsp
     @unpack feasibility_window = jsp.parameter 
     @constraints(m, begin
-        [i=I, j=Jop[i]], bTime1[i,j] - sbTime1[i,j] <= feasibility_window + 0.001
-        [i=I, j=Jop[i]], bTime1[i,j] - sbTime1[i,j] >= -feasibility_window - 0.001
+        fw_lt[i=I, j=Jop[i]], bTime1[i,j] <= feasibility_window + sbTime1[i,j] + 0.001
+        fw_gt[i=I, j=Jop[i]], bTime1[i,j] >= -feasibility_window + sbTime1[i,j] - 0.001
     end)
-    return
+    return fw_lt, fw_gt
 end
 
 """
@@ -22,7 +22,8 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
     @unpack I, J, Jop, PartDue, MachineCap, MachineType, R, T, IJT, MIJ, 
             sbTime1, sbTime2, mult, sslackk, sv_p, Tmax = jsp
     @unpack upper_bound, penalty = jsp.status
-    @unpack prob, prob_r, ShiftLength, feasible_solve_count, feasible_solve_time, ext = jsp.parameter 
+    @unpack prob, prob_r, ShiftLength, feasible_solve_count, 
+            feasible_solve_time, ext, feasibility_window = jsp.parameter 
 
     m = direct_model(optimizer_with_attributes(jsp.parameter.optimizer))
     configure!(FeasibilityProblem(), jsp, m)
@@ -122,7 +123,7 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
         [i=I],                  ComTime1[i]      == cTime1[i,J[i]]
     end)
 
-    feasibility_starting_time_constraints!(ext, jsp, m, bTime1, sbTime1)
+    fw_lt, fw_gt = feasibility_starting_time_constraints!(ext, jsp, m, bTime1, sbTime1)
 
     valid_flag = false
     for i=1:feasible_solve_count
@@ -137,18 +138,22 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
                 jsp.status.upper_bound_time[bc_i] = bc_t
                 jsp.status.lower_bound[bc_i] = jsp.status.lower_bound[maximum(keys(jsp.status.lower_bound))]
                 jsp.status.upper_bound[bc_i] = objective_value(m)
+                for i=I, j=Jop[i]
+                    jsp.feasible_bTime1[(i,j)] = round(value(bTime1[i,j]))
+                end
+                for i=I, j1 =Jop[i], j2 = Jop[i], r = R
+                    jsp.feasible_bTime2[(i,j1,j2,r)] = round(value(bTime2[i,j1,j2,r]))
+                end
+                # update point around which to search
+                for i=I, j=Jop[i]
+                    JuMP.set_normalized_rhs(fw_lt[i,j], feasibility_window + jsp.feasible_bTime1[(i,j)] + 0.001)
+                    JuMP.set_normalized_rhs(fw_gt[i,j], -feasibility_window + jsp.feasible_bTime1[(i,j)] - 0.001)
+                end
             end
         end
     end
     jsp.status.feasible_problem_found = valid_flag
     println("Was a feasible point found? $(valid_flag)")
-
-    for i=I, j=Jop[i]
-        jsp.feasible_bTime1[(i,j)] = round(value(bTime1[i,j]))
-    end
-    for i=I, j1 =Jop[i], j2 = Jop[i], r = R
-        jsp.feasible_bTime2[(i,j1,j2,r)] = round(value(bTime2[i,j1,j2,r]))
-    end
 
     close_problem!(m)
     jsp.status.time_total_feasibility = time() - feasibility_start
