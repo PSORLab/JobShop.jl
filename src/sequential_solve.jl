@@ -15,20 +15,34 @@ function terminated(j::JobShopProblem)
     return false
 end
 
+function stepsize_condition(jsp::JobShopProblem)
+    @unpack current_iteration = jsp.status
+    iszero(mod(current_iteration, jsp.parameter.stepsize_interval)) && (current_iteration > 37)
+end
+
 """
 $(TYPEDSIGNATURES)
 
 Update the stepsize.
 """
 function update_stepsize!(jsp::JobShopProblem)
-    @unpack prior_norm, current_norm, prior_step, current_iteration = jsp.status
-    if (current_iteration > 20) #iszero(mod(current_iteration, 20)) && (current_iteration > 1)
-        MM = 50
-        r = 0.05
-        coeff = 1 - 1/MM/current_iteration^(1 - 1/current_iteration^r)
-        term = prior_step*sqrt(prior_norm/current_norm)
-        #@show coeff, term
-        jsp.status.current_step = coeff*term
+    @unpack prior_norm, current_norm, prior_step, current_iteration, estimate = jsp.status
+    if jsp.parameter.use_stepsize_program && stepsize_condition(jsp)
+        solve_problem(StepsizeProblem(), jsp)
+    end
+    if jsp.parameter.use_stepsize_program
+        if (current_iteration > 20) #iszero(mod(current_iteration, 20)) && (current_iteration > 1)
+            MM = 50
+            r = 0.05
+            coeff = 1 - 1/MM/current_iteration^(1 - 1/current_iteration^r)
+            term = prior_step*sqrt(prior_norm/current_norm)
+            jsp.status.current_step = coeff*term
+        end
+    else
+        LB = current_lower_bound(jsp)
+        if (estimate < 100000) && (estimate - LB > 0)
+            jsp.status.current_step = jsp.parameter.alpha_step/5*(estimate - LB)/current_norm
+        end
     end
     # (k>20) step = (1-1/MM/Math.pow(k,1-1/Math.pow(k,r)))*oldstep*Math.sqrt(oldnorm/norm)
     return nothing

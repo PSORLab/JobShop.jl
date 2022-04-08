@@ -42,3 +42,5 @@ function configure!(::FeasibilityProblem, v::Val{:CPLEX}, j::JobShopProblem, m::
     set_optimizer_attribute(m, "CPX_PARAM_HEURFREQ",    1000000)
     return nothing
 end
+
+configure!(::StepsizeProblem, v::Val{:CPLEX}, j::JobShopProblem, m::Model) = nothing

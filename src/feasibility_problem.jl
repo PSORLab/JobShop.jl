@@ -138,6 +138,7 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
                 jsp.status.upper_bound_time[bc_i] = bc_t
                 jsp.status.lower_bound[bc_i] = jsp.status.lower_bound[maximum(keys(jsp.status.lower_bound))]
                 jsp.status.upper_bound[bc_i] = objective_value(m)
+                println("The feasibility problem solved with objective = $(objective_value(m)) with bound = $(objective_bound(m)) at time = $bc_t")
                 for i=I, j=Jop[i]
                     jsp.feasible_bTime1[(i,j)] = round(value(bTime1[i,j]))
                 end

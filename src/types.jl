@@ -21,6 +21,13 @@ struct FeasibilityProblem <: AbstractLagrangianSubproblem end
 """
 $(TYPEDEF)
 
+Type used to indicate the stepsize problem solved.
+"""
+struct StepsizeProblem <: AbstractLagrangianSubproblem end
+
+"""
+$(TYPEDEF)
+
 Type used to indicate the subproblem.
 """
 struct Subproblem <: AbstractLagrangianSubproblem end
@@ -88,6 +95,11 @@ Base.@kwdef mutable struct SolveParameter
     penalty_iteration::Int = 200
     "Factor used to multiply the penalty by when updating the penalty term."
     penalty_factor::Float64 = 1.05
+    "Stepsize problem set by solving optimization problem"
+    use_stepsize_program::Bool = false
+    "Subproblems to solve prior to computing new stepsize"
+    stepsize_interval::Int = 20
+    alpha_step::Float64 = 0.5
     ext::AbstractExt = Ext()
 end
 
@@ -139,6 +151,8 @@ Base.@kwdef mutable struct SolveStatus
     time_total_feasibility::Float64 = 0.0
     "Flag to indicate that a feasible solution was found."
     feasible_problem_found::Bool = false
+    "Contains current M value used in stepsize calculation."
+    current_M::Int = 1
 end
 
 Base.@kwdef mutable struct JobShopProblem
@@ -162,9 +176,10 @@ Base.@kwdef mutable struct JobShopProblem
     sslackk::Matrix{Float64} = zeros(Float64,2,2)
     sv_p::Matrix{Float64} = zeros(Float64,2,2)
     mult::Matrix{Float64} = zeros(Float64,2,2)
+    lambd::Dict{Int,Matrix{Float64}} = Dict{Int,Matrix{Float64}}()
     sTard1::Vector{Float64} = Float64[]
     sTard2::Array{Float64,3} = zeros(Float64,2,2,2)
-    T::UnitRange{Int} = 1:220
+    T::UnitRange{Int} = 1:232
     sbTime1::Matrix{Float64}  = zeros(Float64,2,2)
     sbTime2::Dict{Tuple{Int,Int,Int,Int},Float64} = Dict{Tuple{Int,Int,Int,Int},Float64}()
     status::SolveStatus       = SolveStatus()

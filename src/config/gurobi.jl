@@ -40,3 +40,5 @@ function configure!(::FeasibilityProblem, v::Val{:Gurobi}, j::JobShopProblem, m:
     set_optimizer_attribute(m, "MIPGap",       0.0025)
     return
 end
+
+configure!(::StepsizeProblem, v::Val{:CPLEX}, j::JobShopProblem, m::Model) = nothing
