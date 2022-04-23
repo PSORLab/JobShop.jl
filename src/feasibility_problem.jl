@@ -107,7 +107,7 @@ function solve_problem(::FeasibilityProblem, jsp::JobShopProblem)
         sum(((1-prob)^(Ma.j-1))*sum(bTimeI1[Ma.i,Ma.j,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for p in IJT, Ma in MIJ if (p.i == Ma.i && p.j == Ma.j && Ma.m == mi)) +
         sum(((1-prob)^(j-1)-(1-prob)^(j))*(1-prob_r)*sum(bTimeI2[Ma.i,Ma.j,j,1,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for Ma in MIJ, p in IJT, j in Jop[Ma.i] if (p.i == Ma.i && p.j == Ma.j && Ma.m == mi)) +
         sum(((1-prob)^(j-1)-(1-prob)^(j))*prob_r*sum(bTimeI2[Ma.i,Ma.j,j,2,k] for k in (t - p.t+1):t if (t - p.t+1 >= 1)) for Ma in MIJ, p in IJT, j in Jop[Ma.i] if (p.i == Ma.i && p.j == Ma.j && Ma.m == mi))
-        <= MachineCap[mi] + 0.00001 # TODO: maybe...
+        <= MachineCap[mi] + 0.00001
     )
 
     @constraints(m, begin

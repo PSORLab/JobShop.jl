@@ -31,16 +31,18 @@ function update_stepsize!(jsp::JobShopProblem)
         solve_problem(StepsizeProblem(), jsp)
     end
     if jsp.parameter.use_stepsize_program
-        if (current_iteration > 20) #iszero(mod(current_iteration, 20)) && (current_iteration > 1)
+        if (current_iteration > 20) && (current_norm > 0.0)
             MM = 50
             r = 0.05
             coeff = 1 - 1/MM/current_iteration^(1 - 1/current_iteration^r)
             term = prior_step*sqrt(prior_norm/current_norm)
-            jsp.status.current_step = coeff*term
+            if term > 0.0
+                jsp.status.current_step = coeff*term
+            end
         end
     else
         LB = current_lower_bound(jsp)
-        if (estimate < 100000) && (estimate - LB > 0)
+        if (estimate < 100000) && (estimate - LB > 0) && (current_norm > 0.0)
             jsp.status.current_step = jsp.parameter.alpha_step/5*(estimate - LB)/current_norm
         end
     end

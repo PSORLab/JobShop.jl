@@ -98,7 +98,7 @@ Base.@kwdef mutable struct SolveParameter
     "Stepsize problem set by solving optimization problem"
     use_stepsize_program::Bool = false
     "Subproblems to solve prior to computing new stepsize"
-    stepsize_interval::Int = 20
+    stepsize_interval::Int = 7
     alpha_step::Float64 = 0.5
     ext::AbstractExt = Ext()
 end
