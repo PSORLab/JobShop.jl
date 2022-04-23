@@ -1,4 +1,4 @@
-using Pkg, CPLEX, JuMP, JLD, UnPack
+using Pkg, CPLEX, JuMP, JLD, UnPack, CSV
 
 #Pkg.develop(path="C:\\Users\\maw16110\\Desktop\\Jobshop.jl\\Jobshop.jl")
 
@@ -19,8 +19,8 @@ jsprob.parameter.start_norm = 100.0
 jsprob.parameter.start_step = 0.1
 jsprob.parameter.optimizer = CPLEX.Optimizer
 jsprob.parameter.penalty = 75.0
-jsprob.parameter.feasible_norm_limit = 1.5
-jsprob.parameter.feasible_solve_count = 5
+jsprob.parameter.feasible_norm_limit = 2.0
+jsprob.parameter.feasible_solve_count = 3
 jsprob.parameter.feasibility_window = 6
 jsprob.parameter.feasible_start = 200
 jsprob.parameter.iteration_limit = 10000000000
@@ -55,8 +55,7 @@ function JobShop.feasibility_starting_time_constraints!(::Ext, jsp::JobShopProbl
     return fw_lt, fw_gt
 end
 
-# solve
-sequential_solve!(jsprob)
-
- # save result
-save(joinpath(@__DIR__, "simple_example_new.jld"), "jsp", jsprob)
+# solve and store start time
+df_feasible_time, df_heurestic_time = sequential_solve!(jsprob)
+CSV.write("feasible_time.csv", df_feasible_time)
+CSV.write("heurestic_time.csv", df_heurestic_time)

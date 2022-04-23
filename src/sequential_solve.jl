@@ -46,7 +46,6 @@ function update_stepsize!(jsp::JobShopProblem)
             jsp.status.current_step = jsp.parameter.alpha_step/5*(estimate - LB)/current_norm
         end
     end
-    # (k>20) step = (1-1/MM/Math.pow(k,1-1/Math.pow(k,r)))*oldstep*Math.sqrt(oldnorm/norm)
     return nothing
 end
 
@@ -61,16 +60,11 @@ end
 
 function update_penalty!(jsp::JobShopProblem)
     @unpack penalty_iteration, penalty_factor = jsp.parameter
-   # if jsp.status.current_iteration > 50
-     #   if mod(jsp.status.current_iteration - 1, penalty_iteration) == 0
-      #      jsp.status.penalty *= penalty_factor
-       # end
-   # end
-    #=
-    if mod(current_iteration, jsp.parameter.penalty_iteration) == 0
-        jsp.status.penalty += 1
+    if jsp.status.current_iteration > 50
+        if mod(jsp.status.current_iteration - 1, penalty_iteration) == 0
+            jsp.status.penalty *= penalty_factor
+        end
     end
-    =#
     return nothing
 end
 
@@ -92,5 +86,11 @@ function sequential_solve!(jsp::JobShopProblem)
             jsp.status.current_iteration += 1
         end
     end
-    return nothing
+    df = DataFrame(part=Int[], op=Int[], start=Int[])
+    sdf = DataFrame(part=Int[], op=Int[], start=Int[])
+    for i in jsp.I, j in jsp.Jop[i]
+        push!(df, (i, j, jsp.feasible_bTime1[i,j]))
+        push!(sdf, (i, j, jsp.sbTime1[i,j]))
+    end
+    return df, sdf
 end
