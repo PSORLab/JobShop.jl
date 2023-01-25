@@ -9,13 +9,13 @@ loaded into dataframes then used:
 - **part_due**: Contains a column `due`. The i-th row of column `due` has the due date of the i-th part.  
 - **part_group**: Contains columns `part` and `group`. Defines the Lagrangian subproblem (group) that each part belongs to. 
 - **part_operation_num**: Contains a column `num` which is the number of operations required to complete the i-th part which corresponds to the i-th row.
-- **part_operation_rework**: Currently, unused. Will be used to set rework propababilities specific to each part and operation rather than a single rework probability for all part and operation combinations.
-- **part_operation_scrap**: Currently, unused. Will be used to set scrap propababilities specific to each part and operation rather than a single scrap probability for all part and operation combinations.
+- **part_operation_rework**: Currently, unused. Will be used to set rework probabilities specific to each part and operation rather than a single rework probability for all part and operation combinations.
+- **part_operation_scrap**: Currently, unused. Will be used to set scrap probabilities specific to each part and operation rather than a single scrap probability for all part and operation combinations.
 - **part_operation_time**: Contains three columns `part`, `op`, and `time` used to specific the time taken to process each part on a given operation.
 - **machine_part_op**: Describes the part and operation combinations that may be processes on a given machine.
 - **machine_capacity**: Describes the capacity for each machine where the ith entry in the `capacity` column corresponds to the capacity of machine `i`.
 
-The following parameters must also be set in order to fully the problem.
+The following parameters must also be set in order to fully define the problem.
 
 - **ShiftLength**: Typical shift length considered.
 - **prob**: Set in the `parameter` subfield of `jsp`. Probability of scrap. 
